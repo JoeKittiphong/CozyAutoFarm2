@@ -1,0 +1,7 @@
+Set fso = CreateObject("Scripting.FileSystemObject")
+fso.CopyFile "C:\Users\Zylaah\.gemini\antigravity\brain\9f4fbc27-ff26-4f3a-b963-2c52aa41b621\tomato_item_icon_1775379234967_1775379256407.png", "c:\Users\Zylaah\programmer\codex\TD prototype\CozyAutoFarm2\assets\sprites\tomato_item.png", True
+fso.CopyFile "C:\Users\Zylaah\.gemini\antigravity\brain\9f4fbc27-ff26-4f3a-b963-2c52aa41b621\tomato_sprout_1775379261821_1775379281055.png", "c:\Users\Zylaah\programmer\codex\TD prototype\CozyAutoFarm2\assets\sprites\tomato_sprout.png", True
+fso.CopyFile "C:\Users\Zylaah\.gemini\antigravity\brain\9f4fbc27-ff26-4f3a-b963-2c52aa41b621\tomato_ready_1775379287312_1775379302892.png", "c:\Users\Zylaah\programmer\codex\TD prototype\CozyAutoFarm2\assets\sprites\tomato_ready.png", True
+fso.CopyFile "C:\Users\Zylaah\.gemini\antigravity\brain\9f4fbc27-ff26-4f3a-b963-2c52aa41b621\potato_item_icon_1775379308112_1775379323287.png", "c:\Users\Zylaah\programmer\codex\TD prototype\CozyAutoFarm2\assets\sprites\potato_item.png", True
+fso.CopyFile "C:\Users\Zylaah\.gemini\antigravity\brain\9f4fbc27-ff26-4f3a-b963-2c52aa41b621\potato_sprout_1775379330112_1775379343230.png", "c:\Users\Zylaah\programmer\codex\TD prototype\CozyAutoFarm2\assets\sprites\potato_sprout.png", True
+fso.CopyFile "C:\Users\Zylaah\.gemini\antigravity\brain\9f4fbc27-ff26-4f3a-b963-2c52aa41b621\potato_ready_1775379348912_1775379365352.png", "c:\Users\Zylaah\programmer\codex\TD prototype\CozyAutoFarm2\assets\sprites\potato_ready.png", True

@@ -8,9 +8,12 @@ var current_path: Array[Vector2i] = []
 var current_job: Dictionary = {}
 var is_working: bool = false
 var carried_wheat: int = 0
+var carried_tomato: int = 0
+var carried_potato: int = 0
 var carried_flour: int = 0
 var carried_egg: int = 0
 var carried_milk: int = 0
+var carried_cake: int = 0
 var carried_animal: Node2D = null
 const MAX_CARRY: int = 3
 var _work_tween: Tween
@@ -51,7 +54,9 @@ func _process(delta: float) -> void:
 				current_job = job
 				var grid_pos = _get_current_grid_pos()
 				
-				var complex_jobs = ["FEED_CHICKEN", "COLLECT_EGG", "FETCH_ANIMAL", "FEED_COW", "COLLECT_MILK"]
+				var complex_jobs = ["FEED_CHICKEN", "COLLECT_EGG", "FETCH_ANIMAL", "FEED_COW", "COLLECT_MILK", 
+									"BAKERY_DELIVER_FLOUR", "BAKERY_DELIVER_EGG", "BAKERY_DELIVER_MILK", "COLLECT_CAKE",
+									"MILL_DELIVER_WHEAT", "COLLECT_FLOUR"]
 				if current_job.type in complex_jobs:
 					_start_work() # Delegate pathing entirely to start_work for complex jobs
 				else:
@@ -68,13 +73,9 @@ func _process(delta: float) -> void:
 				if carried_wheat > 0:
 					_start_delivery()
 		else:
-			var complex_jobs = ["FEED_CHICKEN", "COLLECT_EGG", "FETCH_ANIMAL", "FEED_COW", "COLLECT_MILK"]
 			if current_job.type == "DELIVER":
 				if current_path.is_empty():
 					_complete_delivery()
-			elif current_job.type in complex_jobs:
-				if current_path.is_empty():
-					_start_work()
 			else:
 				if current_path.is_empty():
 					_start_work()
@@ -113,13 +114,20 @@ func _start_work() -> void:
 	elif current_job.type == "WATER":
 		get_node("/root/FarmManager").complete_water(current_job.target_pos)
 	elif current_job.type == "HARVEST":
-		get_node("/root/FarmManager").complete_harvest(current_job.target_pos)
-		carried_wheat += 1
+		var f_manager = get_node("/root/FarmManager")
+		var crop_type = f_manager.get_tile_type(current_job.target_pos)
+		f_manager.complete_harvest(current_job.target_pos)
+		
+		if crop_type == "TOMATO": carried_tomato += 1
+		elif crop_type == "POTATO": carried_potato += 1
+		else: carried_wheat += 1
+		
 		_update_carried_visual()
 		current_job.clear()
 		is_working = false
 		
-		if carried_wheat >= MAX_CARRY:
+		var total_carried = carried_wheat + carried_tomato + carried_potato
+		if total_carried >= MAX_CARRY:
 			_start_delivery()
 		return
 
@@ -154,6 +162,58 @@ func _start_work() -> void:
 			is_working = false
 			return
 
+	elif current_job.type == "MILL_DELIVER_WHEAT":
+		if carried_wheat < 3:
+			var grid_pos = _get_current_grid_pos()
+			if grid_pos != Vector2i(-2, -1): # Wheat storage area
+				current_path = get_node("/root/GridManager").get_path_cells(grid_pos, Vector2i(-2, -1))
+				is_working = false
+				return
+			else:
+				var inv = get_node("/root/InventoryManager")
+				if inv.wheat_stock >= 3:
+					inv.wheat_stock -= 3
+					inv.resources_updated.emit()
+					carried_wheat = 3
+					_update_carried_visual()
+					current_path = get_node("/root/GridManager").get_path_cells(grid_pos, current_job.target_pos)
+				else:
+					get_node("/root/JobManager").add_job("MILL_DELIVER_WHEAT", current_job.target_pos)
+					current_job.clear()
+				is_working = false
+				return
+		else:
+			get_node("/root/FarmManager").deliver_wheat_to_mill(current_job.target_pos)
+			carried_wheat = 0
+			_update_carried_visual()
+			current_job.clear()
+			is_working = false
+			return
+
+	elif current_job.type == "COLLECT_FLOUR":
+		if carried_flour < 1:
+			var grid_pos = _get_current_grid_pos()
+			if grid_pos != current_job.target_pos:
+				current_path = get_node("/root/GridManager").get_path_cells(grid_pos, current_job.target_pos)
+				is_working = false
+				return
+			else:
+				get_node("/root/FarmManager").collect_flour_from_mill(current_job.target_pos)
+				carried_flour += 1
+				_update_carried_visual()
+				current_path = get_node("/root/GridManager").get_path_cells(grid_pos, Vector2i(2, -1)) # Storage area
+				is_working = false
+				return
+		else:
+			var inv = get_node("/root/InventoryManager")
+			inv.flour_stock += 1
+			inv.resources_updated.emit()
+			carried_flour = 0
+			_update_carried_visual()
+			current_job.clear()
+			is_working = false
+			return
+
 	elif current_job.type == "COLLECT_EGG":
 		if carried_egg < 1:
 			var grid_pos = _get_current_grid_pos()
@@ -181,7 +241,7 @@ func _start_work() -> void:
 			return
 
 	elif current_job.type == "FEED_COW":
-		if carried_wheat < 6:
+		if carried_wheat < 3:
 			var grid_pos = _get_current_grid_pos()
 			if grid_pos != Vector2i(-2, -1):
 				current_path = get_node("/root/GridManager").get_path_cells(grid_pos, Vector2i(-2, -1))
@@ -189,10 +249,10 @@ func _start_work() -> void:
 				return
 			else:
 				var inv = get_node("/root/InventoryManager")
-				if inv.wheat_stock >= 6:
-					inv.wheat_stock -= 6
+				if inv.wheat_stock >= 3:
+					inv.wheat_stock -= 3
 					inv.resources_updated.emit()
-					carried_wheat = 6
+					carried_wheat = 3
 					_update_carried_visual()
 					current_path = get_node("/root/GridManager").get_path_cells(grid_pos, current_job.target_pos)
 				else:
@@ -283,6 +343,73 @@ func _start_work() -> void:
 			is_working = false
 			return
 		
+	elif "BAKERY_DELIVER" in current_job.type:
+		var res_type = ""
+		var silo_pos = Vector2i(-2, -1)
+		var inv_var = ""
+		
+		if "FLOUR" in current_job.type:
+			res_type = "FLOUR"
+			silo_pos = Vector2i(2, -1)
+			inv_var = "flour_stock"
+		elif "EGG" in current_job.type:
+			res_type = "EGG"
+			inv_var = "egg_stock"
+		elif "MILK" in current_job.type:
+			res_type = "MILK"
+			inv_var = "milk_stock"
+			
+		var count_var = "carried_" + res_type.to_lower()
+		if get(count_var) < 1:
+			var grid_pos = _get_current_grid_pos()
+			if grid_pos != silo_pos:
+				current_path = get_node("/root/GridManager").get_path_cells(grid_pos, silo_pos)
+				is_working = false
+				return
+			else:
+				var inv = get_node("/root/InventoryManager")
+				if inv.get(inv_var) > 0:
+					inv.set(inv_var, inv.get(inv_var) - 1)
+					inv.resources_updated.emit()
+					set(count_var, 1)
+					_update_carried_visual()
+					current_path = get_node("/root/GridManager").get_path_cells(grid_pos, current_job.target_pos)
+				else:
+					get_node("/root/JobManager").add_job(current_job.type, current_job.target_pos)
+					current_job.clear()
+				is_working = false
+				return
+		else:
+			get_node("/root/FarmManager").deliver_to_bakery(current_job.target_pos, res_type)
+			set(count_var, 0)
+			_update_carried_visual()
+			current_job.clear()
+			is_working = false
+			return
+
+	elif current_job.type == "COLLECT_CAKE":
+		if carried_cake < 1:
+			var grid_pos = _get_current_grid_pos()
+			if grid_pos != current_job.target_pos:
+				current_path = get_node("/root/GridManager").get_path_cells(grid_pos, current_job.target_pos)
+				is_working = false
+				return
+			else:
+				get_node("/root/FarmManager").collect_cake_from_bakery(current_job.target_pos)
+				carried_cake += 1
+				_update_carried_visual()
+				current_path = get_node("/root/GridManager").get_path_cells(grid_pos, Vector2i(2, -1)) # Deliver to shop area
+				is_working = false
+				return
+		else:
+			var inv = get_node("/root/InventoryManager")
+			inv.add_cake(1)
+			carried_cake = 0
+			_update_carried_visual()
+			current_job.clear()
+			is_working = false
+			return
+		
 	current_job.clear()
 	is_working = false
 
@@ -295,6 +422,12 @@ func _update_carried_visual() -> void:
 	if carried_wheat > 0:
 		tex_path = "res://assets/sprites/wheat_item.png"
 		count = carried_wheat
+	elif carried_tomato > 0:
+		tex_path = "res://assets/sprites/tomato_item.png"
+		count = carried_tomato
+	elif carried_potato > 0:
+		tex_path = "res://assets/sprites/potato_item.png"
+		count = carried_potato
 	elif carried_flour > 0:
 		tex_path = "res://assets/sprites/flour_bag.png"
 		count = carried_flour
@@ -304,6 +437,9 @@ func _update_carried_visual() -> void:
 	elif carried_milk > 0:
 		tex_path = "res://assets/sprites/milk_bucket.png"
 		count = carried_milk
+	elif carried_cake > 0:
+		tex_path = "res://assets/sprites/cake_final.png"
+		count = carried_cake
 	elif carried_animal != null:
 		if current_job.has("animal_type") and current_job.animal_type == "CHICKEN":
 			tex_path = "res://assets/sprites/chicken.png"
@@ -338,8 +474,17 @@ func _complete_delivery() -> void:
 		
 	var inv = get_node_or_null("/root/InventoryManager")
 	if inv:
-		inv.add_wheat(carried_wheat)
+		if carried_wheat > 0: inv.add_wheat(carried_wheat)
+		if carried_tomato > 0: 
+			inv.tomato_stock += carried_tomato
+			inv.resources_updated.emit()
+		if carried_potato > 0:
+			inv.potato_stock += carried_potato
+			inv.resources_updated.emit()
+			
 	carried_wheat = 0
+	carried_tomato = 0
+	carried_potato = 0
 	
 	current_job.clear()
 	is_working = false

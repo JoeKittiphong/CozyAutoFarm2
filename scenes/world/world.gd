@@ -4,7 +4,7 @@ extends Node2D
 @onready var farm_layer: Node2D = $FarmLayer
 @onready var highlight_rect: ColorRect = $HighlightRect
 
-var placement_mode: String = "WHEAT"
+
 
 const TILE_SIZE = 128
 
@@ -17,6 +17,7 @@ func _ready() -> void:
 	var hud_script = load("res://scenes/ui/hud.gd")
 	if hud_script:
 		var hud = hud_script.new()
+		hud.name = "HUD"
 		add_child(hud)
 
 func _spawn_worker_system() -> void:
@@ -25,10 +26,8 @@ func _spawn_worker_system() -> void:
 	_spawn_sprite(farm_layer, house_pos, "res://assets/sprites/worker_house.png", Color.BROWN)
 	GridManager.set_cell_solid(house_pos, true)
 	
-	# Spawn Mill building at (2, -2)
-	var mill_pos = Vector2i(2, -2)
-	_spawn_sprite(farm_layer, mill_pos, "res://assets/sprites/mill_building.png", Color.DARK_GRAY)
-	GridManager.set_cell_solid(mill_pos, true)
+	# Spawn Mill building removed (now purchasable)
+	pass
 	
 	# Spawn Shop building at (-6, -2)
 	var shop_pos = Vector2i(-6, -2)
@@ -63,18 +62,61 @@ func _get_grid_position(world_pos: Vector2) -> Vector2:
 	return Vector2(floor(world_pos.x / TILE_SIZE), floor(world_pos.y / TILE_SIZE))
 
 func _handle_left_click(grid_pos: Vector2i) -> void:
+	# Check interactions
+	if grid_pos.x >= -2 and grid_pos.x <= -1 and grid_pos.y >= -2 and grid_pos.y <= -1:
+		var hud = get_node_or_null("HUD")
+		if hud:
+			hud.toggle_worker_house()
+		return
+		
+	if grid_pos == Vector2i(-6, -2):
+		var hud = get_node_or_null("HUD")
+		if hud:
+			hud.toggle_shop()
+		return
+
 	var f_manager = get_node("/root/FarmManager")
+	var inv = get_node("/root/InventoryManager")
 	if f_manager.get_tile_state(grid_pos) == f_manager.TileState.EMPTY:
-		if placement_mode == "WHEAT":
+		if inv.bp_wheat > 0:
+			inv.bp_wheat -= 1
+			inv.resources_updated.emit()
 			f_manager.place_blueprint(grid_pos)
 			update_tile_visual(grid_pos, "BLUEPRINT", "res://assets/sprites/dirt.png")
-		elif placement_mode == "COOP":
+		elif inv.bp_coop > 0:
+			inv.bp_coop -= 1
+			inv.resources_updated.emit()
 			f_manager._farm_data[grid_pos] = f_manager.TileState.COOP
 			update_tile_visual(grid_pos, "COOP", "res://assets/sprites/chicken_coop.png")
 			GridManager.set_cell_solid(grid_pos, false)
-		elif placement_mode == "COW_PEN":
+		elif inv.bp_cow_pen > 0:
+			inv.bp_cow_pen -= 1
+			inv.resources_updated.emit()
 			f_manager._farm_data[grid_pos] = f_manager.TileState.COW_PEN
 			update_tile_visual(grid_pos, "COW_PEN", "res://assets/sprites/cow_pen.png")
+			GridManager.set_cell_solid(grid_pos, false)
+		elif inv.bp_bakery > 0:
+			inv.bp_bakery -= 1
+			inv.resources_updated.emit()
+			f_manager.register_bakery(grid_pos)
+			update_tile_visual(grid_pos, "BAKERY", "res://assets/sprites/bakery_final.png")
+			GridManager.set_cell_solid(grid_pos, false)
+		elif inv.bp_tomato > 0:
+			inv.bp_tomato -= 1
+			inv.resources_updated.emit()
+			f_manager.place_blueprint(grid_pos, "TOMATO")
+			update_tile_visual(grid_pos, "BLUEPRINT", "res://assets/sprites/dirt.png")
+		elif inv.bp_potato > 0:
+			inv.bp_potato -= 1
+			inv.resources_updated.emit()
+			f_manager.place_blueprint(grid_pos, "POTATO")
+			update_tile_visual(grid_pos, "BLUEPRINT", "res://assets/sprites/dirt.png")
+		elif inv.bp_mill > 0:
+			inv.bp_mill -= 1
+			inv.mill_count += 1
+			inv.resources_updated.emit()
+			f_manager.register_mill(grid_pos)
+			update_tile_visual(grid_pos, "MILL", "res://assets/sprites/mill_building.png")
 			GridManager.set_cell_solid(grid_pos, false)
 
 func has_empty_pen(pen_type: String) -> bool:
