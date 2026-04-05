@@ -29,10 +29,10 @@ var count_mill_bought: int = 0
 var count_workers_bought: int = 0
 
 var mill_count: int = 0
+var house_level: int = 1
 
 var mill_paused: bool = false
 const MILL_TIME: float = 5.0
-var _mill_timer: float = 0.0
 
 func add_wheat(amount: int) -> void:
     wheat_stock += amount
@@ -45,11 +45,30 @@ func _process(_delta: float) -> void:
 func get_worker_price() -> int:
     return 5 + (5 * count_workers_bought)
 
+func get_max_workers() -> int:
+    return house_level * 2
+
 func buy_worker() -> bool:
+    if count_workers_bought >= get_max_workers():
+        return false
+        
     var p = get_worker_price()
     if money >= p:
         money -= p
         count_workers_bought += 1
+        resources_updated.emit()
+        return true
+    return false
+
+func get_house_upgrade_price() -> int:
+    return int(floor(100.0 * pow(2.0, house_level - 1)))
+
+func upgrade_house() -> bool:
+    if house_level >= 5: return false
+    var p = get_house_upgrade_price()
+    if money >= p:
+        money -= p
+        house_level += 1
         resources_updated.emit()
         return true
     return false

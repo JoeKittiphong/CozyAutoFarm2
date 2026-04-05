@@ -118,9 +118,10 @@ func _start_work() -> void:
 		var crop_type = f_manager.get_tile_type(current_job.target_pos)
 		f_manager.complete_harvest(current_job.target_pos)
 		
-		if crop_type == "TOMATO": carried_tomato += 1
-		elif crop_type == "POTATO": carried_potato += 1
-		else: carried_wheat += 1
+		var yield_amt = f_manager.get_tile_level(current_job.target_pos)
+		if crop_type == "TOMATO": carried_tomato += yield_amt
+		elif crop_type == "POTATO": carried_potato += yield_amt
+		else: carried_wheat += yield_amt
 		
 		_update_carried_visual()
 		current_job.clear()
@@ -314,7 +315,7 @@ func _start_work() -> void:
 				var found = false
 				var target_state = f_manager.TileState.COOP if current_job.animal_type == "CHICKEN" else f_manager.TileState.COW_PEN
 				for cell in f_manager._farm_data.keys():
-					if f_manager._farm_data[cell] == target_state:
+					if f_manager.get_tile_state(cell) == target_state:
 						var has_an = false
 						var gn = "chickens" if current_job.animal_type == "CHICKEN" else "cows"
 						for a in get_tree().get_nodes_in_group(gn):

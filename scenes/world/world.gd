@@ -118,12 +118,17 @@ func _handle_left_click(grid_pos: Vector2i) -> void:
 			f_manager.register_mill(grid_pos)
 			update_tile_visual(grid_pos, "MILL", "res://assets/sprites/mill_building.png")
 			GridManager.set_cell_solid(grid_pos, false)
+	else:
+		# If cell is not empty, try opening upgrade menu if it's a valid building/plot
+		var hud = get_node_or_null("HUD")
+		if hud:
+			hud.open_upgrade_ui(grid_pos)
 
 func has_empty_pen(pen_type: String) -> bool:
 	var f_manager = get_node("/root/FarmManager")
 	var target_state = f_manager.TileState.COOP if pen_type == "COOP" else f_manager.TileState.COW_PEN
 	for cell in f_manager._farm_data.keys():
-		if f_manager._farm_data[cell] == target_state:
+		if f_manager.get_tile_state(cell) == target_state:
 			var has_animal = false
 			var g = "chickens" if pen_type == "COOP" else "cows"
 			for a in get_tree().get_nodes_in_group(g):

@@ -21,6 +21,12 @@ var buy_coop_btn: Button
 var buy_cow_pen_btn: Button
 var buy_bakery_btn: Button
 var buy_mill_btn: Button
+var upgrade_house_btn: Button
+
+var upgrade_panel: PanelContainer
+var upgrade_info_label: Label
+var upgrade_btn: Button
+var current_upgrade_cell: Vector2i = Vector2i(-999, -999)
 var buy_chicken_btn: Button
 var buy_cow_btn: Button
 var stock_info_label: Label
@@ -31,7 +37,7 @@ func _ready() -> void:
     # 1. Top Bar
     var top_panel = PanelContainer.new()
     top_panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
-    top_panel.custom_minimum_size = Vector2(0, 80)
+    top_panel.custom_minimum_size = Vector2(0, 40)
     var style = StyleBoxFlat.new()
     style.bg_color = Color(0.15, 0.1, 0.1, 0.9)
     top_panel.add_theme_stylebox_override("panel", style)
@@ -60,6 +66,7 @@ func _ready() -> void:
     # 2. Setup Popups
     _setup_shop_ui()
     _setup_worker_ui()
+    _setup_upgrade_ui()
     
     var inv = get_node_or_null("/root/InventoryManager")
     if inv:
@@ -71,11 +78,11 @@ func _create_resource_ui(parent: Node, icon_path: String, start_val: String) -> 
     var tex = TextureRect.new()
     tex.texture = load(icon_path)
     tex.expand_mode = TextureRect.EXPAND_FIT_WIDTH
-    tex.custom_minimum_size = Vector2(40, 40)
+    tex.custom_minimum_size = Vector2(24, 24)
     tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
     var lbl = Label.new()
     lbl.text = start_val
-    lbl.add_theme_font_size_override("font_size", 20)
+    lbl.add_theme_font_size_override("font_size", 14)
     bx.add_child(tex)
     bx.add_child(lbl)
     parent.add_child(bx)
@@ -83,8 +90,9 @@ func _create_resource_ui(parent: Node, icon_path: String, start_val: String) -> 
 
 func _setup_shop_ui():
     shop_panel = PanelContainer.new()
-    shop_panel.set_anchors_preset(Control.PRESET_CENTER)
-    shop_panel.custom_minimum_size = Vector2(400, 300)
+    shop_panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE, Control.PRESET_MODE_MINSIZE, 0)
+    shop_panel.offset_top = 40
+    shop_panel.custom_minimum_size.x = 350
     shop_panel.visible = false
     
     var style = StyleBoxFlat.new()
@@ -94,15 +102,18 @@ func _setup_shop_ui():
     style.border_width_left = 4
     style.border_width_right = 4
     style.border_color = Color(0.8, 0.6, 0.2)
-    style.corner_radius_bottom_left = 10
     style.corner_radius_bottom_right = 10
-    style.corner_radius_top_left = 10
     style.corner_radius_top_right = 10
     shop_panel.add_theme_stylebox_override("panel", style)
     
     var vbox = VBoxContainer.new()
-    vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+    vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
     vbox.add_theme_constant_override("separation", 15)
+    
+    # Add top margin
+    var spacer = Control.new()
+    spacer.custom_minimum_size.y = 20
+    vbox.add_child(spacer)
     
     var title = Label.new()
     title.text = "--- SHOP ---"
@@ -164,8 +175,9 @@ func _setup_shop_ui():
 
 func _setup_worker_ui():
     worker_panel = PanelContainer.new()
-    worker_panel.set_anchors_preset(Control.PRESET_CENTER)
-    worker_panel.custom_minimum_size = Vector2(300, 450)
+    worker_panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE, Control.PRESET_MODE_MINSIZE, 0)
+    worker_panel.offset_top = 40
+    worker_panel.custom_minimum_size.x = 350
     worker_panel.visible = false
     
     var style = StyleBoxFlat.new()
@@ -175,15 +187,18 @@ func _setup_worker_ui():
     style.border_width_left = 4
     style.border_width_right = 4
     style.border_color = Color(0.4, 0.8, 0.2)
-    style.corner_radius_bottom_left = 10
     style.corner_radius_bottom_right = 10
-    style.corner_radius_top_left = 10
     style.corner_radius_top_right = 10
     worker_panel.add_theme_stylebox_override("panel", style)
     
     var vbox = VBoxContainer.new()
-    vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+    vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
     vbox.add_theme_constant_override("separation", 15)
+    
+    # Add top margin
+    var spacer = Control.new()
+    spacer.custom_minimum_size.y = 20
+    vbox.add_child(spacer)
     
     var title = Label.new()
     title.text = "--- WORKER HOUSE ---"
@@ -193,6 +208,10 @@ func _setup_worker_ui():
     hire_worker_btn = Button.new()
     hire_worker_btn.pressed.connect(_on_hire_pressed)
     vbox.add_child(hire_worker_btn)
+    
+    upgrade_house_btn = Button.new()
+    upgrade_house_btn.pressed.connect(func(): get_node("/root/InventoryManager").upgrade_house())
+    vbox.add_child(upgrade_house_btn)
     
     var title2 = Label.new()
     title2.text = "--- BUY BLUEPRINTS ---"
@@ -241,15 +260,94 @@ func _setup_worker_ui():
     worker_panel.add_child(vbox)
     add_child(worker_panel)
 
+func _setup_upgrade_ui():
+    upgrade_panel = PanelContainer.new()
+    # Align to left sidebar, same as shop/worker
+    upgrade_panel.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE, Control.PRESET_MODE_MINSIZE, 0)
+    upgrade_panel.offset_top = 40
+    upgrade_panel.custom_minimum_size.x = 350
+    upgrade_panel.visible = false
+    
+    var style = StyleBoxFlat.new()
+    style.bg_color = Color(0.05, 0.15, 0.1, 0.95)
+    style.border_width_top = 4
+    style.border_width_right = 4
+    style.border_color = Color(0.2, 0.9, 0.5)
+    style.corner_radius_bottom_right = 12
+    style.corner_radius_top_right = 12
+    upgrade_panel.add_theme_stylebox_override("panel", style)
+    
+    var vbox = VBoxContainer.new()
+    vbox.alignment = BoxContainer.ALIGNMENT_BEGIN
+    vbox.add_theme_constant_override("separation", 15)
+    
+    # Add top margin
+    var spacer = Control.new()
+    spacer.custom_minimum_size.y = 20
+    vbox.add_child(spacer)
+    
+    var title = Label.new()
+    title.text = "--- UPGRADE ---"
+    title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    title.add_theme_color_override("font_color", Color(0.4, 1.0, 0.6))
+    vbox.add_child(title)
+    
+    upgrade_info_label = Label.new()
+    upgrade_info_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    vbox.add_child(upgrade_info_label)
+    
+    upgrade_btn = Button.new()
+    upgrade_btn.custom_minimum_size = Vector2(0, 50)
+    upgrade_btn.text = "Upgrade"
+    upgrade_btn.pressed.connect(_on_upgrade_pressed)
+    vbox.add_child(upgrade_btn)
+    
+    var close_btn = Button.new()
+    close_btn.custom_minimum_size = Vector2(0, 50)
+    close_btn.text = "Close"
+    close_btn.pressed.connect(func(): upgrade_panel.visible = false)
+    vbox.add_child(close_btn)
+    
+    upgrade_panel.add_child(vbox)
+    add_child(upgrade_panel)
+
+func open_upgrade_ui(cell: Vector2i):
+    var f_manager = get_node("/root/FarmManager")
+    var state = f_manager.get_tile_state(cell)
+    
+    # Only upgrade buildings or plots that are past blueprint stage
+    var valid_states = [
+        f_manager.TileState.TILLED, f_manager.TileState.PLANTED, f_manager.TileState.WATERED,
+        f_manager.TileState.GROWING, f_manager.TileState.READY_TO_HARVEST,
+        f_manager.TileState.TOMATO_SPROUT, f_manager.TileState.TOMATO_READY,
+        f_manager.TileState.POTATO_SPROUT, f_manager.TileState.POTATO_READY,
+        f_manager.TileState.BAKERY, f_manager.TileState.MILL,
+        f_manager.TileState.COOP, f_manager.TileState.COW_PEN
+    ]
+    
+    if state in valid_states:
+        current_upgrade_cell = cell
+        upgrade_panel.visible = true
+        shop_panel.visible = false
+        worker_panel.visible = false
+        _on_resources_updated()
+
+func _on_upgrade_pressed():
+    var f_manager = get_node("/root/FarmManager")
+    if f_manager.upgrade_tile(current_upgrade_cell):
+        _on_resources_updated()
+
 func toggle_shop():
     shop_panel.visible = not shop_panel.visible
     if shop_panel.visible:
         worker_panel.visible = false
+        upgrade_panel.visible = false
 
 func toggle_worker_house():
     worker_panel.visible = not worker_panel.visible
     if worker_panel.visible:
         shop_panel.visible = false
+        upgrade_panel.visible = false
 
 func _on_hire_pressed() -> void:
     var inv = get_node("/root/InventoryManager")
@@ -290,7 +388,21 @@ func _on_resources_updated() -> void:
     cake_label.text = "Cake: " + str(inv.cake_stock)
     
     if hire_worker_btn:
-        hire_worker_btn.text = "Hire Worker (-" + str(inv.get_worker_price()) + " Coins)"
+        hire_worker_btn.text = "Hire Worker (" + str(inv.count_workers_bought) + "/" + str(inv.get_max_workers()) + ")\n-" + str(inv.get_worker_price()) + " Coins"
+        hire_worker_btn.disabled = inv.count_workers_bought >= inv.get_max_workers()
+        
+    if upgrade_house_btn:
+        var hp = inv.get_house_upgrade_price()
+        if inv.house_level < 5:
+            upgrade_house_btn.text = "Upgrade House (Lv " + str(inv.house_level) + ")\n-" + str(hp) + " Coins"
+            upgrade_house_btn.disabled = inv.money < hp
+        else:
+            upgrade_house_btn.text = "Upgrade House (MAX Lv 5)"
+            upgrade_house_btn.disabled = true
+            
+    if upgrade_panel and upgrade_panel.visible:
+        _update_upgrade_panel_info()
+        
     if buy_wheat_btn:
         buy_wheat_btn.text = "Wheat Seeds (-" + str(inv.get_bp_price_wheat()) + " Coins)"
     if buy_tomato_btn:
@@ -328,3 +440,28 @@ func _on_resources_updated() -> void:
         else:
             buy_cow_btn.text = "Buy Cow (Need Cow Pen!)"
             buy_cow_btn.disabled = true
+
+func _update_upgrade_panel_info():
+    var f_manager = get_node("/root/FarmManager")
+    var inv = get_node("/root/InventoryManager")
+    var lvl = f_manager.get_tile_level(current_upgrade_cell)
+    
+    var type_str = "Plot"
+    var effect_str = "Yield: " + str(lvl) + " -> " + str(lvl + 1)
+    
+    var real_state = f_manager.get_tile_state(current_upgrade_cell)
+    if real_state == f_manager.TileState.BAKERY:
+        type_str = "Bakery"
+        effect_str = "Efficiency: " + str(int(pow(1.5, lvl-1)*100)) + "% -> " + str(int(pow(1.5, lvl)*100)) + "%"
+    elif real_state == f_manager.TileState.MILL:
+        type_str = "Mill"
+        effect_str = "Efficiency: " + str(int(pow(1.5, lvl-1)*100)) + "% -> " + str(int(pow(1.5, lvl)*100)) + "%"
+    
+    if lvl < 5:
+        var price = f_manager.get_tile_upgrade_price(current_upgrade_cell)
+        upgrade_info_label.text = type_str + " Lv " + str(lvl) + "\n" + effect_str + "\nCost: " + str(price) + " Coins"
+        upgrade_btn.disabled = inv.money < price
+        upgrade_btn.visible = true
+    else:
+        upgrade_info_label.text = type_str + " Lv " + str(lvl) + "\n(MAX LEVEL)"
+        upgrade_btn.visible = false
