@@ -1,4 +1,4 @@
-class_name GameData
+﻿class_name GameData
 extends RefCounted
 
 const STORAGE_POS := Vector2i(-2, -1)
@@ -13,6 +13,8 @@ const ITEM_WHEAT := "WHEAT"
 const ITEM_TOMATO := "TOMATO"
 const ITEM_POTATO := "POTATO"
 const ITEM_FLOUR := "FLOUR"
+const ITEM_WOOD := "WOOD"
+const ITEM_STONE := "STONE"
 const ITEM_ANIMAL_FEED := "ANIMAL_FEED"
 const ITEM_FISH := "FISH"
 const ITEM_EGG := "EGG"
@@ -42,6 +44,9 @@ const ANIMAL_COW := "COW"
 const GROUP_CHICKENS := "chickens"
 const GROUP_COWS := "cows"
 
+const RESOURCE_TREE := "TREE"
+const RESOURCE_ROCK := "ROCK"
+
 const JOB_TILL := "TILL"
 const JOB_PLANT := "PLANT"
 const JOB_WATER := "WATER"
@@ -52,6 +57,7 @@ const JOB_COLLECT_ANIMAL_PRODUCT := "COLLECT_ANIMAL_PRODUCT"
 const JOB_FETCH_ANIMAL := "FETCH_ANIMAL"
 const JOB_PROCESSOR_DELIVER := "PROCESSOR_DELIVER"
 const JOB_PROCESSOR_COLLECT := "PROCESSOR_COLLECT"
+const JOB_GATHER_RESOURCE := "GATHER_RESOURCE"
 
 const WORK_MODE_AUTO := "AUTO"
 const WORK_MODE_ASSIGNED := "ASSIGNED"
@@ -59,6 +65,7 @@ const WORKER_ROLE_CROP_CARE := "CROP_CARE"
 const WORKER_ROLE_PROCESSOR_DELIVERY := "PROCESSOR_DELIVERY"
 const WORKER_ROLE_PROCESSOR_COLLECT := "PROCESSOR_COLLECT"
 const WORKER_ROLE_ANIMAL_CARE := "ANIMAL_CARE"
+const WORKER_ROLE_RESOURCE_GATHERING := "RESOURCE_GATHERING"
 const WORKER_ROLE_GENERAL_DELIVERY := "GENERAL_DELIVERY"
 
 const STATE_WAITING_DELIVERY := "WAITING_DELIVERY"
@@ -71,12 +78,15 @@ const ITEMS_DIR := "res://data/items"
 const BLUEPRINTS_DIR := "res://data/blueprints"
 const PROCESSORS_DIR := "res://data/processors"
 const ANIMALS_DIR := "res://data/animals"
+const WORLD_RESOURCES_DIR := "res://data/world_resources"
 
 const PREFERRED_ITEM_ORDER := [
 	ITEM_WHEAT,
 	ITEM_TOMATO,
 	ITEM_POTATO,
 	ITEM_FLOUR,
+	ITEM_WOOD,
+	ITEM_STONE,
 	ITEM_ANIMAL_FEED,
 	ITEM_FISH,
 	ITEM_EGG,
@@ -98,6 +108,7 @@ const PREFERRED_BLUEPRINT_ORDER := [
 ]
 const PREFERRED_ANIMAL_ORDER := [ANIMAL_CHICKEN, ANIMAL_COW]
 const PREFERRED_PROCESSOR_ORDER := [PROCESSOR_MILL, PROCESSOR_BAKERY, PROCESSOR_TOMATO_FACTORY, PROCESSOR_ANIMAL_FEED_FACTORY, PROCESSOR_FISH_CAGE]
+const PREFERRED_WORLD_RESOURCE_ORDER := [RESOURCE_TREE, RESOURCE_ROCK]
 
 const CROP_VISUALS := {
 	"WHEAT": {"sprout": "res://assets/sprites/wheat_sprout.png", "ready": "res://assets/sprites/wheat_ready.png"},
@@ -109,14 +120,29 @@ static var _item_defs_by_id: Dictionary = {}
 static var _processor_defs_by_id: Dictionary = {}
 static var _blueprint_defs_by_id: Dictionary = {}
 static var _animal_defs_by_id: Dictionary = {}
+static var _world_resource_defs_by_id: Dictionary = {}
+static var _world_resource_defs_by_tile: Dictionary = {}
+static var _world_resource_defs_by_source: Dictionary = {}
 static var _item_order: Array[String] = []
 static var _sellable_item_order: Array[String] = []
 static var _blueprint_order: Array[String] = []
 static var _shop_animal_order: Array[String] = []
 
 static func _ensure_resource_maps() -> void:
-	if not _item_defs_by_id.is_empty():
+	if not _item_defs_by_id.is_empty() and not _blueprint_defs_by_id.is_empty() and not _processor_defs_by_id.is_empty() and not _animal_defs_by_id.is_empty() and not _world_resource_defs_by_id.is_empty():
 		return
+
+	_item_defs_by_id.clear()
+	_processor_defs_by_id.clear()
+	_blueprint_defs_by_id.clear()
+	_animal_defs_by_id.clear()
+	_world_resource_defs_by_id.clear()
+	_world_resource_defs_by_tile.clear()
+	_world_resource_defs_by_source.clear()
+	_item_order.clear()
+	_sellable_item_order.clear()
+	_blueprint_order.clear()
+	_shop_animal_order.clear()
 
 	for item_def in _load_resources_from_folder(ITEMS_DIR):
 		if item_def is ItemDefinition and item_def.item_id != "":
@@ -133,6 +159,13 @@ static func _ensure_resource_maps() -> void:
 	for animal_def in _load_resources_from_folder(ANIMALS_DIR):
 		if animal_def is AnimalDefinition and animal_def.animal_id != "":
 			_animal_defs_by_id[animal_def.animal_id] = animal_def
+
+	for world_resource_def in _load_resources_from_folder(WORLD_RESOURCES_DIR):
+		if world_resource_def is WorldResourceDefinition and world_resource_def.resource_id != "":
+			_world_resource_defs_by_id[world_resource_def.resource_id] = world_resource_def
+			_world_resource_defs_by_tile[_get_world_resource_tile_key(world_resource_def.tile_source_id, world_resource_def.tile_atlas_coords)] = world_resource_def
+			if world_resource_def.tile_source_id >= 0 and not _world_resource_defs_by_source.has(world_resource_def.tile_source_id):
+				_world_resource_defs_by_source[world_resource_def.tile_source_id] = world_resource_def
 
 	_item_order = _sort_ids_with_preferred(_item_defs_by_id.keys(), PREFERRED_ITEM_ORDER)
 	_sellable_item_order = _item_order.duplicate()
@@ -184,6 +217,9 @@ static func _get_level_texture(level_textures: Array[String], level: int, fallba
 	var idx: int = clamp(level - 1, 0, level_textures.size() - 1)
 	var path: String = String(level_textures[idx])
 	return path if path != "" else fallback
+
+static func _get_world_resource_tile_key(source_id: int, atlas_coords: Vector2i) -> String:
+	return "%d:%d:%d" % [source_id, atlas_coords.x, atlas_coords.y]
 
 static func get_item_order() -> Array[String]:
 	_ensure_resource_maps()
@@ -268,6 +304,17 @@ static func get_animal_def(animal_type: String) -> AnimalDefinition:
 	_ensure_resource_maps()
 	return _animal_defs_by_id.get(animal_type, null)
 
+static func get_world_resource_def(resource_id: String) -> WorldResourceDefinition:
+	_ensure_resource_maps()
+	return _world_resource_defs_by_id.get(resource_id, null)
+
+static func get_world_resource_def_by_tile(source_id: int, atlas_coords: Vector2i) -> WorldResourceDefinition:
+	_ensure_resource_maps()
+	var exact_match: WorldResourceDefinition = _world_resource_defs_by_tile.get(_get_world_resource_tile_key(source_id, atlas_coords), null)
+	if exact_match != null:
+		return exact_match
+	return _world_resource_defs_by_source.get(source_id, null)
+
 static func get_animal_defs_for_pen(pen_blueprint_type: String) -> Array:
 	_ensure_resource_maps()
 	var result: Array = []
@@ -288,6 +335,7 @@ static func get_worker_role_options() -> Array[Dictionary]:
 		{"id": WORKER_ROLE_PROCESSOR_DELIVERY, "label": "Processor Delivery"},
 		{"id": WORKER_ROLE_PROCESSOR_COLLECT, "label": "Processor Collect"},
 		{"id": WORKER_ROLE_ANIMAL_CARE, "label": "Animal Care"},
+		{"id": WORKER_ROLE_RESOURCE_GATHERING, "label": "Resource Gathering"},
 		{"id": WORKER_ROLE_GENERAL_DELIVERY, "label": "General Delivery"},
 	]
 
@@ -319,6 +367,20 @@ static func get_worker_target_options(role_id: String) -> Array[Dictionary]:
 			for animal_id in get_shop_animal_order():
 				var animal_def: AnimalDefinition = get_animal_def(animal_id)
 				options.append({"id": animal_id, "label": animal_def.label if animal_def != null else animal_id})
+		WORKER_ROLE_RESOURCE_GATHERING:
+			var resource_ids: Array[String] = _sort_ids_with_preferred(_world_resource_defs_by_id.keys(), PREFERRED_WORLD_RESOURCE_ORDER)
+			if resource_ids.is_empty():
+				resource_ids = [RESOURCE_TREE, RESOURCE_ROCK]
+			for resource_id in resource_ids:
+				var resource_def: WorldResourceDefinition = get_world_resource_def(resource_id)
+				var resource_label: String = resource_id.capitalize()
+				if resource_def != null and resource_def.label != "":
+					resource_label = resource_def.label
+				elif resource_id == RESOURCE_TREE:
+					resource_label = "Tree"
+				elif resource_id == RESOURCE_ROCK:
+					resource_label = "Rock"
+				options.append({"id": resource_id, "label": resource_label})
 		_:
 			pass
 	return options
@@ -337,6 +399,15 @@ static func get_worker_target_label(role_id: String, target_id: String) -> Strin
 		WORKER_ROLE_ANIMAL_CARE:
 			var animal_def: AnimalDefinition = get_animal_def(target_id)
 			return animal_def.label if animal_def != null else target_id
+		WORKER_ROLE_RESOURCE_GATHERING:
+			var resource_def: WorldResourceDefinition = get_world_resource_def(target_id)
+			if resource_def != null and resource_def.label != "":
+				return resource_def.label
+			if target_id == RESOURCE_TREE:
+				return "Tree"
+			if target_id == RESOURCE_ROCK:
+				return "Rock"
+			return target_id
 		_:
 			return target_id
 

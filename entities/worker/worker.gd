@@ -24,6 +24,7 @@ var _work_tween: Tween
 @onready var _inventory_manager: Node = get_node("/root/InventoryManager")
 @onready var _farm_manager: Node = get_node("/root/FarmManager")
 @onready var _grid_manager: Node = get_node("/root/GridManager")
+@onready var _resource_manager: Node = get_node("/root/ResourceManager")
 
 func _ready() -> void:
 	if worker_id == 0:
@@ -167,6 +168,12 @@ func matches_job(job: Dictionary) -> bool:
 			if animal_def == null:
 				return false
 			return String(job.get("group_name", animal_def.group_name)) == animal_def.group_name or String(job.get("animal_type", assigned_target_id)) == assigned_target_id
+		GameData.WORKER_ROLE_RESOURCE_GATHERING:
+			if job_type != GameData.JOB_GATHER_RESOURCE:
+				return false
+			if assigned_target_id == "":
+				return true
+			return String(job.get("resource_type", "")) == assigned_target_id
 		GameData.WORKER_ROLE_GENERAL_DELIVERY:
 			return job_type == GameData.JOB_DELIVER
 		_:
@@ -180,6 +187,7 @@ func _is_complex_job(job: Dictionary) -> bool:
 		GameData.JOB_FETCH_ANIMAL,
 		GameData.JOB_PROCESSOR_DELIVER,
 		GameData.JOB_PROCESSOR_COLLECT,
+		GameData.JOB_GATHER_RESOURCE,
 	]
 
 func _get_current_grid_pos() -> Vector2i:
@@ -227,6 +235,9 @@ func _start_work() -> void:
 			return
 		GameData.JOB_PROCESSOR_COLLECT:
 			_handle_processor_collect()
+			return
+		GameData.JOB_GATHER_RESOURCE:
+			_handle_gather_resource()
 			return
 
 	current_job.clear()
@@ -439,6 +450,30 @@ func _handle_processor_collect() -> void:
 	current_job.clear()
 	is_working = false
 
+func _handle_gather_resource() -> void:
+	var interaction_pos := Vector2i(current_job.get("interaction_pos", current_job.get("target_pos", Vector2i.ZERO)))
+	var grid_pos = _get_current_grid_pos()
+	if grid_pos != interaction_pos:
+		current_path = _grid_manager.get_path_cells(grid_pos, interaction_pos)
+		if current_path.is_empty():
+			current_job.clear()
+			is_working = false
+			return
+		is_working = false
+		return
+
+	var gathered: Dictionary = _resource_manager.gather_resource(Vector2i(current_job.get("target_pos", Vector2i.ZERO)))
+	if gathered.is_empty():
+		current_job.clear()
+		is_working = false
+		return
+
+	_add_carried_item(String(gathered.get("item_type", "")), int(gathered.get("amount", 1)))
+	current_job.clear()
+	is_working = false
+	if _get_total_carried_items() >= MAX_CARRY:
+		_start_delivery()
+
 func _get_storage_pos_for_item(item_type: String) -> Vector2i:
 	return GameData.PROCESSING_STORAGE_POS if item_type in [GameData.ITEM_FLOUR, GameData.ITEM_TOMATO, GameData.ITEM_TOMATO_SAUCE] else GameData.STORAGE_POS
 
@@ -516,4 +551,5 @@ func _complete_delivery() -> void:
 	carried_items.clear()
 	current_job.clear()
 	is_working = false
+
 

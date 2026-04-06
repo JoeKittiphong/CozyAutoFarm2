@@ -1,6 +1,19 @@
-[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://systems/data/blueprint_definition.gd" id="1"]
+[ext_resource type="Script" path="res://systems/data/resource_amount_definition.gd" id="2"]
+[ext_resource type="Resource" path="res://data/items/wood.tres" id="3"]
+[ext_resource type="Resource" path="res://data/items/stone.tres" id="4"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+item_def = ExtResource("3")
+amount = 12
+
+[sub_resource type="Resource" id="2"]
+script = ExtResource("2")
+item_def = ExtResource("4")
+amount = 10
 
 [resource]
 script = ExtResource("1")
@@ -12,4 +25,5 @@ growth = 1.25
 placement_type = "PROCESSOR"
 shop_category = "SHOP"
 processor_type = "ANIMAL_FEED_FACTORY"
-texture_path = "res://assets/sprites/bakery_final.png"
+texture_path = "res://assets/sprites/feed_factory.png"
+resource_costs = [SubResource("1"), SubResource("2")]

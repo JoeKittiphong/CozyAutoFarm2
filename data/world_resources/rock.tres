@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="WorldResourceDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://systems/data/world_resource_definition.gd" id="1"]
+[ext_resource type="Resource" path="res://data/items/stone.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+resource_id = "ROCK"
+label = "Rock"
+tile_source_id = 5
+drop_item_def = ExtResource("2")
+drop_amount = 3
+gather_duration = 1.4
+blocks_movement = true

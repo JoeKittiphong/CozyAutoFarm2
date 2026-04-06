@@ -16,26 +16,42 @@ func add_job(type: String, target_pos: Vector2i, extra_data: Dictionary = {}) ->
 	job_dict.merge(extra_data)
 	jobs.append(job_dict)
 
-func get_next_job() -> Dictionary:
+func _pop_job_at(index: int) -> Dictionary:
+	var selected_job: Dictionary = jobs[index]
+	jobs.remove_at(index)
+	return selected_job
+
+func _find_first_job_index(prefer_non_resource: bool) -> int:
 	if jobs.is_empty():
+		return -1
+	if not prefer_non_resource:
+		return 0
+	for index in range(jobs.size()):
+		if String(jobs[index].get("type", "")) != GameData.JOB_GATHER_RESOURCE:
+			return index
+	return 0
+
+func get_next_job() -> Dictionary:
+	var index := _find_first_job_index(true)
+	if index < 0:
 		return {}
-	return jobs.pop_front()
+	return _pop_job_at(index)
 
 func get_next_job_for_worker(worker: FarmWorker) -> Dictionary:
 	if jobs.is_empty():
 		return {}
 	if worker == null or worker.uses_auto_job_selection():
-		return jobs.pop_front()
+		return get_next_job()
 
 	for index in range(jobs.size()):
 		var job: Dictionary = jobs[index]
 		if worker.matches_job(job):
-			var selected_job: Dictionary = job
-			jobs.remove_at(index)
-			return selected_job
+			return _pop_job_at(index)
 
 	if worker.can_help_when_idle():
-		return jobs.pop_front()
+		var fallback_index := _find_first_job_index(true)
+		if fallback_index >= 0:
+			return _pop_job_at(fallback_index)
 	return {}
 
 func has_job_at(target_pos: Vector2i) -> bool:

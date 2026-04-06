@@ -16,3 +16,4 @@ class_name BlueprintDefinition
 @export var level_textures: Array[String] = []
 @export var level_sprout_textures: Array[String] = []
 @export var level_ready_textures: Array[String] = []
+@export var resource_costs: Array[ResourceAmountDefinition] = []

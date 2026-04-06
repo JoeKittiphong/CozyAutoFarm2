@@ -5,15 +5,18 @@ const TILE_SIZE := 128
 const DEFAULT_MAP_RECT := Rect2i(-15, -10, 30, 20)
 const GROUND_SOURCE_ID := 0
 const GROUND_ATLAS_COORDS := Vector2i.ZERO
+const START_CAMERA_LEFT_UI_WIDTH := 360.0
 
 @onready var ground_layer: TileMapLayer = $GroundLayer
 @onready var water_layer: TileMapLayer = $WaterLayer
 @onready var obstacles_layer: TileMapLayer = $ObstaclesLayer
+@onready var resource_layer: TileMapLayer = $ResourceLayer
 @onready var plot_layer: Node2D = $PlotLayer
 @onready var pen_layer: Node2D = $PenLayer
 @onready var building_layer: Node2D = $BuildingLayer
 @onready var water_building_layer: Node2D = $WaterBuildingLayer
 @onready var actor_layer: Node2D = $ActorLayer
+@onready var game_camera: GameCamera = $GameCamera
 @onready var highlight_rect: ColorRect = $HighlightRect
 @onready var house_marker: Marker2D = $HouseMarker
 @onready var shop_marker: Marker2D = $ShopMarker
@@ -22,10 +25,14 @@ const GROUND_ATLAS_COORDS := Vector2i.ZERO
 @onready var _farm_manager: Node = get_node("/root/FarmManager")
 @onready var _inventory_manager: Node = get_node("/root/InventoryManager")
 @onready var _job_manager: Node = get_node("/root/JobManager")
+@onready var _resource_manager: Node = get_node("/root/ResourceManager")
 
 func _ready() -> void:
 	highlight_rect.size = Vector2(TILE_SIZE, TILE_SIZE)
 	highlight_rect.color = Color(1, 1, 1, 0.3)
+	_fit_window_to_screen()
+	if not get_viewport().size_changed.is_connected(_on_viewport_size_changed):
+		get_viewport().size_changed.connect(_on_viewport_size_changed)
 	_ensure_default_ground_tiles()
 	_scan_editor_map()
 	_spawn_worker_system()
@@ -34,6 +41,8 @@ func _ready() -> void:
 	if hud_scene:
 		var hud = hud_scene.instantiate()
 		add_child(hud)
+
+	call_deferred("_frame_start_camera")
 
 func _ensure_default_ground_tiles() -> void:
 	if not ground_layer.get_used_cells().is_empty():
@@ -44,7 +53,9 @@ func _ensure_default_ground_tiles() -> void:
 			ground_layer.set_cell(Vector2i(x, y), GROUND_SOURCE_ID, GROUND_ATLAS_COORDS)
 
 func _scan_editor_map() -> void:
-	MapScannerClass.apply_layers_to_grid(ground_layer, water_layer, obstacles_layer)
+	MapScannerClass.apply_layers_to_grid(ground_layer, water_layer, obstacles_layer, resource_layer)
+	if _resource_manager != null:
+		_resource_manager.register_from_layer(resource_layer)
 
 func _spawn_worker_system() -> void:
 	var house_pos: Vector2i = _marker_to_grid(house_marker)
@@ -57,12 +68,69 @@ func _spawn_worker_system() -> void:
 
 	_spawn_worker()
 
+func _on_viewport_size_changed() -> void:
+	call_deferred("_frame_start_camera")
+
+func _fit_window_to_screen() -> void:
+	if Engine.is_editor_hint():
+		return
+	var screen_index: int = DisplayServer.window_get_current_screen()
+	var screen_rect: Rect2i = DisplayServer.screen_get_usable_rect(screen_index)
+	if screen_rect.size.x <= 0 or screen_rect.size.y <= 0:
+		return
+	DisplayServer.window_set_size(screen_rect.size)
+	DisplayServer.window_set_position(screen_rect.position)
+
+func _frame_start_camera() -> void:
+	if game_camera == null:
+		return
+	var world_rect: Rect2 = _get_start_world_rect()
+	game_camera.frame_world_rect(world_rect, Vector2(TILE_SIZE * 1.5, TILE_SIZE * 1.5), START_CAMERA_LEFT_UI_WIDTH)
+
+func _get_start_world_rect() -> Rect2:
+	var has_any := false
+	var min_cell := Vector2i.ZERO
+	var max_cell := Vector2i.ZERO
+
+	for layer in [ground_layer, water_layer, obstacles_layer, resource_layer]:
+		if layer == null:
+			continue
+		for cell in layer.get_used_cells():
+			if not has_any:
+				has_any = true
+				min_cell = cell
+				max_cell = cell
+			else:
+				min_cell.x = min(min_cell.x, cell.x)
+				min_cell.y = min(min_cell.y, cell.y)
+				max_cell.x = max(max_cell.x, cell.x)
+				max_cell.y = max(max_cell.y, cell.y)
+
+	for marker in [house_marker, shop_marker, worker_spawn_marker, animal_shop_spawn_marker]:
+		var cell := _marker_to_grid(marker)
+		if not has_any:
+			has_any = true
+			min_cell = cell
+			max_cell = cell
+		else:
+			min_cell.x = min(min_cell.x, cell.x)
+			min_cell.y = min(min_cell.y, cell.y)
+			max_cell.x = max(max_cell.x, cell.x)
+			max_cell.y = max(max_cell.y, cell.y)
+
+	if not has_any:
+		return Rect2(Vector2.ZERO, Vector2(TILE_SIZE * 8, TILE_SIZE * 6))
+
+	min_cell -= Vector2i(2, 2)
+	max_cell += Vector2i(2, 2)
+	var top_left := _grid_to_world_top_left(min_cell)
+	var bottom_right := _grid_to_world_top_left(max_cell + Vector2i.ONE)
+	return Rect2(top_left, bottom_right - top_left)
+
 func _spawn_worker() -> void:
 	var worker_script = load("res://entities/worker/worker.gd")
 	var worker_node = worker_script.new()
-	worker_node.position = worker_spawn_marker.global_position
-	worker_node.position.x += randf_range(-15, 15)
-	worker_node.position.y += randf_range(-15, 15)
+	worker_node.position = _get_safe_spawn_world_position(worker_spawn_marker)
 	actor_layer.add_child(worker_node)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -80,13 +148,13 @@ func _unhandled_input(event: InputEvent) -> void:
 func _update_highlight_feedback(grid_pos: Vector2i) -> void:
 	var blueprint_def = _get_first_available_blueprint_def()
 	if blueprint_def == null:
-		highlight_rect.color = Color(1, 1, 1, 0.3) # White (Idle)
+		highlight_rect.color = Color(1, 1, 1, 0.3)
 		return
-		
+
 	if _can_place_blueprint(grid_pos, blueprint_def):
-		highlight_rect.color = Color(0, 1, 0, 0.3) # Green (Valid)
+		highlight_rect.color = Color(0, 1, 0, 0.3)
 	else:
-		highlight_rect.color = Color(1, 0, 0, 0.3) # Red (Blocked)
+		highlight_rect.color = Color(1, 0, 0, 0.3)
 
 func _get_first_available_blueprint_def() -> BlueprintDefinition:
 	for blueprint_type in GameData.get_blueprint_order():
@@ -106,6 +174,11 @@ func _grid_to_world_top_left(grid_pos: Vector2i) -> Vector2:
 
 func _marker_to_grid(marker: Marker2D) -> Vector2i:
 	return _get_grid_position(marker.global_position)
+
+func _get_safe_spawn_world_position(marker: Marker2D) -> Vector2:
+	var marker_cell: Vector2i = _marker_to_grid(marker)
+	var safe_cell: Vector2i = GridManager.find_nearest_walkable_land_cell(marker_cell)
+	return _grid_to_world_top_left(safe_cell)
 
 func _is_house_interaction_cell(grid_pos: Vector2i) -> bool:
 	var house_origin: Vector2i = _marker_to_grid(house_marker)
@@ -200,11 +273,15 @@ func _spawn_animal_at_shop(type: String) -> void:
 	if animal_script:
 		var animal = animal_script.new()
 		animal.animal_type = type
-		animal.position = animal_shop_spawn_marker.global_position
+		animal.position = _get_safe_spawn_world_position(animal_shop_spawn_marker)
 		animal.state = GameData.STATE_WAITING_DELIVERY
 		actor_layer.add_child(animal)
 		if _job_manager:
 			_job_manager.add_job(GameData.JOB_FETCH_ANIMAL, _marker_to_grid(animal_shop_spawn_marker), {"animal_node": animal, "animal_type": type})
+
+func clear_resource_tile(grid_pos: Vector2i) -> void:
+	if resource_layer != null:
+		resource_layer.erase_cell(grid_pos)
 
 func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String) -> void:
 	var node_name = "Tile_" + str(grid_pos.x) + "_" + str(grid_pos.y)
@@ -244,7 +321,8 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 
 func _find_tile_visual(node_name: String) -> Sprite2D:
 	for layer in [plot_layer, pen_layer, building_layer, water_building_layer]:
-		if layer == null: continue
+		if layer == null:
+			continue
 		var node = layer.get_node_or_null(node_name)
 		if node != null:
 			return node as Sprite2D

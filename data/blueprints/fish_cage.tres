@@ -1,6 +1,19 @@
-[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://systems/data/blueprint_definition.gd" id="1"]
+[ext_resource type="Script" path="res://systems/data/resource_amount_definition.gd" id="2"]
+[ext_resource type="Resource" path="res://data/items/wood.tres" id="3"]
+[ext_resource type="Resource" path="res://data/items/stone.tres" id="4"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+item_def = ExtResource("3")
+amount = 8
+
+[sub_resource type="Resource" id="2"]
+script = ExtResource("2")
+item_def = ExtResource("4")
+amount = 3
 
 [resource]
 script = ExtResource("1")
@@ -13,4 +26,5 @@ placement_type = "PROCESSOR"
 placement_surface = "WATER"
 shop_category = "SHOP"
 processor_type = "FISH_CAGE"
-texture_path = "res://assets/sprites/chicken_coop.png"
+texture_path = "res://assets/sprites/fish_cage.png"
+resource_costs = [SubResource("1"), SubResource("2")]

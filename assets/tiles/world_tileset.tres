@@ -2,7 +2,8 @@
 
 [ext_resource type="Texture2D" uid="uid://cwi5ynvjqonw8" path="res://assets/sprites/grass.png" id="1_grass"]
 [ext_resource type="Texture2D" uid="uid://bp17k3rdhoh4e" path="res://assets/sprites/dirt.png" id="2_dirt"]
-[ext_resource type="Texture2D" uid="uid://dc8xaeib4nnx4" path="res://assets/tiles/water_tile.tres" id="3_water"]
+[ext_resource type="Texture2D" uid="uid://s2bplq51hujo" path="res://assets/sprites/resource_rock.png" id="3_k7m0s"]
+[ext_resource type="Texture2D" uid="uid://c8tseddfn6ofm" path="res://assets/sprites/resource_tree.png" id="4_n3lm4"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_grass"]
 texture = ExtResource("1_grass")
@@ -30,13 +31,31 @@ texture_region_size = Vector2i(128, 128)
 3:2/0 = 0
 2:2/0 = 0
 
-[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_water"]
-texture = ExtResource("3_water")
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_jfg2u"]
+texture = ExtResource("3_k7m0s")
 texture_region_size = Vector2i(128, 128)
 0:0/0 = 0
+0:0/0/custom_data_0 = "ROCK"
+1:0/0 = 0
+1:0/0/custom_data_0 = "ROCK"
+0:1/0 = 0
+0:1/0/custom_data_0 = "ROCK"
+1:1/0 = 0
+1:1/0/custom_data_0 = "ROCK"
+0:2/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_3obos"]
+texture = ExtResource("4_n3lm4")
+texture_region_size = Vector2i(128, 128)
+0:0/0 = 0
+0:0/0/custom_data_0 = "TREE"
+7:4/0 = 0
 
 [resource]
 tile_size = Vector2i(128, 128)
+custom_data_layer_0/name = "resource_id"
+custom_data_layer_0/type = 4
 sources/0 = SubResource("TileSetAtlasSource_grass")
 sources/1 = SubResource("TileSetAtlasSource_dirt")
-sources/2 = SubResource("TileSetAtlasSource_water")
+sources/5 = SubResource("TileSetAtlasSource_jfg2u")
+sources/6 = SubResource("TileSetAtlasSource_3obos")

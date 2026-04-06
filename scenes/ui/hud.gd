@@ -1,4 +1,4 @@
-extends CanvasLayer
+﻿extends CanvasLayer
 
 const ResourceItemScene = preload("res://scenes/ui/components/resource_item.tscn")
 
@@ -416,10 +416,12 @@ func _on_resources_updated() -> void:
 	for blueprint_type in blueprint_buttons.keys():
 		var blueprint_button: Button = blueprint_buttons[blueprint_type]
 		var blueprint_def: BlueprintDefinition = GameData.get_blueprint_def(blueprint_type)
-		var blueprint_label: String = blueprint_type
-		if blueprint_def != null:
-			blueprint_label = blueprint_def.label
-		blueprint_button.text = "%s (-%d Coins)" % [blueprint_label, InventoryManager.get_blueprint_price(blueprint_type)]
+		if blueprint_def == null:
+			blueprint_button.text = blueprint_type
+			blueprint_button.disabled = true
+			continue
+		blueprint_button.text = _format_blueprint_cost_text(blueprint_def)
+		blueprint_button.disabled = not _can_afford_blueprint(blueprint_def)
 
 	if worker_manage_panel.visible:
 		_refresh_worker_management_statuses()
@@ -444,6 +446,19 @@ func _on_resources_updated() -> void:
 		else:
 			animal_button.text = "Buy %s (Need %s!)" % [label, pen_label]
 			animal_button.disabled = true
+
+func _format_blueprint_cost_text(blueprint_def: BlueprintDefinition) -> String:
+	var parts: Array[String] = ["-%d Coins" % InventoryManager.get_blueprint_price(blueprint_def.blueprint_id)]
+	for cost in blueprint_def.resource_costs:
+		if cost == null or cost.item_def == null:
+			continue
+		parts.append("-%d %s" % [int(cost.amount), cost.item_def.label])
+	return "%s (%s)" % [blueprint_def.label, ", ".join(parts)]
+
+func _can_afford_blueprint(blueprint_def: BlueprintDefinition) -> bool:
+	if InventoryManager.money < InventoryManager.get_blueprint_price(blueprint_def.blueprint_id):
+		return false
+	return InventoryManager.has_resource_costs(blueprint_def.resource_costs)
 
 func _update_upgrade_panel_info() -> void:
 	var lvl: int = FarmManager.get_tile_level(current_upgrade_cell)

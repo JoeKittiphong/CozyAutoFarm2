@@ -45,6 +45,25 @@ func spend_item(item_type: String, amount: int) -> bool:
 	resources_updated.emit()
 	return true
 
+func has_resource_costs(costs: Array) -> bool:
+	for cost in costs:
+		if cost == null or cost.item_def == null:
+			continue
+		if get_item_stock(cost.item_def.item_id) < int(cost.amount):
+			return false
+	return true
+
+func spend_resource_costs(costs: Array) -> bool:
+	if not has_resource_costs(costs):
+		return false
+	for cost in costs:
+		if cost == null or cost.item_def == null:
+			continue
+		var item_id: String = cost.item_def.item_id
+		item_stock[item_id] = get_item_stock(item_id) - int(cost.amount)
+	resources_updated.emit()
+	return true
+
 func consume_animal_feed_points(points: int) -> bool:
 	if points <= 0:
 		return true
@@ -132,14 +151,22 @@ func sell_item(item_type: String) -> void:
 		resources_updated.emit()
 
 func buy_blueprint(blueprint_type: String) -> bool:
+	var blueprint_def: BlueprintDefinition = GameData.get_blueprint_def(blueprint_type)
+	if blueprint_def == null:
+		return false
+
 	var price := get_blueprint_price(blueprint_type)
 	if money < price:
 		return false
-
-	if GameData.get_blueprint_def(blueprint_type) == null:
+	if not has_resource_costs(blueprint_def.resource_costs):
 		return false
 
 	money -= price
+	for cost in blueprint_def.resource_costs:
+		if cost == null or cost.item_def == null:
+			continue
+		var item_id: String = cost.item_def.item_id
+		item_stock[item_id] = get_item_stock(item_id) - int(cost.amount)
 	blueprint_purchase_counts[blueprint_type] = int(blueprint_purchase_counts.get(blueprint_type, 0)) + 1
 	blueprint_stock[blueprint_type] = get_blueprint_stock(blueprint_type) + 1
 	resources_updated.emit()
