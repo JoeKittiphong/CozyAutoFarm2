@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/item_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = "MILK"
+label = "Milk"
+icon_path = "res://assets/sprites/milk_bucket.png"
+sell_price = 7
+carry_amount = 1

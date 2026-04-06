@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/animal_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+animal_id = "CHICKEN"
+label = "Chicken"
+price = 20
+pen_blueprint_type = "COOP"
+icon_path = "res://assets/sprites/chicken.png"
+script_path = "res://entities/animals/farm_animal.gd"
+group_name = "chickens"
+feed_item_id = "FLOUR"
+feed_amount = 1
+product_item_id = "EGG"
+produce_time = 10.0
+ready_state_name = "EGG_READY"
+move_speed = 30.0
+sprite_scale = 0.4
+wander_padding = 10.0

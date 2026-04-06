@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/blueprint_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+blueprint_id = "COW_PEN"
+label = "Cow Pen"
+stock_short = "CP"
+base_price = 20.0
+growth = 1.2
+placement_type = "BUILDING"
+tile_type = "COW_PEN"
+texture_path = "res://assets/sprites/cow_pen.png"

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/blueprint_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+blueprint_id = "COOP"
+label = "Chicken Coop"
+stock_short = "C"
+base_price = 15.0
+growth = 1.15
+placement_type = "BUILDING"
+tile_type = "COOP"
+texture_path = "res://assets/sprites/chicken_coop.png"

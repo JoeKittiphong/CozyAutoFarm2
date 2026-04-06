@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="ProcessorDefinition" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://systems/data/processor_definition.gd" id="1"]
+[ext_resource type="Script" path="res://systems/data/resource_amount_definition.gd" id="2"]
+[ext_resource type="Resource" path="res://data/items/tomato.tres" id="3"]
+[ext_resource type="Resource" path="res://data/items/tomato_sauce.tres" id="4"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+item_def = ExtResource("3")
+amount = 2
+
+[sub_resource type="Resource" id="2"]
+script = ExtResource("2")
+item_def = ExtResource("4")
+amount = 1
+
+[resource]
+script = ExtResource("1")
+processor_type = "TOMATO_FACTORY"
+label = "Tomato Factory"
+base_duration = 8.0
+ready_state_name = "SAUCE_READY"
+ready_texture_path = "res://assets/sprites/shop_building.png"
+deliver_storage_pos = Vector2i(2, -1)
+collect_storage_pos = Vector2i(2, -1)
+inputs = [SubResource("1")]
+outputs = [SubResource("2")]

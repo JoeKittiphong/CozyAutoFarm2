@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scenes/ui/components/resource_item.gd" id="1_2i3r4"]
+
+[node name="ResourceItem" type="HBoxContainer"]
+script = ExtResource("1_2i3r4")
+
+[node name="Icon" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(24, 24)
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ValueLabel" type="Label" parent="."]
+theme_override_font_sizes/font_size = 14

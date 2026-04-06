@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="AnimalDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/animal_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+animal_id = "COW"
+label = "Cow"
+price = 40
+pen_blueprint_type = "COW_PEN"
+icon_path = "res://assets/sprites/cow.png"
+script_path = "res://entities/animals/farm_animal.gd"
+group_name = "cows"
+feed_item_id = "WHEAT"
+feed_amount = 3
+product_item_id = "MILK"
+produce_time = 15.0
+ready_state_name = "MILK_READY"
+move_speed = 20.0
+sprite_scale = 0.7
+wander_padding = 20.0

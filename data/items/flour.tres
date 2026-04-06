@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ItemDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/item_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = "FLOUR"
+label = "Flour"
+icon_path = "res://assets/sprites/flour_bag.png"
+sell_price = 4
+carry_amount = 1

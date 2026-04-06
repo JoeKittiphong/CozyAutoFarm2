@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/blueprint_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+blueprint_id = "TOMATO_FACTORY"
+label = "Tomato Factory"
+stock_short = "TF"
+base_price = 35.0
+growth = 1.25
+placement_type = "PROCESSOR"
+processor_type = "TOMATO_FACTORY"
+texture_path = "res://assets/sprites/shop_building.png"

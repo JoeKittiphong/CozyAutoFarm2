@@ -1,0 +1,13 @@
+extends Resource
+class_name BlueprintDefinition
+
+@export var blueprint_id: String = ""
+@export var label: String = ""
+@export var stock_short: String = ""
+@export var base_price: float = 0.0
+@export var growth: float = 1.0
+@export var placement_type: String = ""
+@export var crop_type: String = ""
+@export var tile_type: String = ""
+@export var processor_type: String = ""
+@export_file("*.png") var texture_path: String = ""

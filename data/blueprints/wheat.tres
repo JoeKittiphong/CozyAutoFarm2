@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/blueprint_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+blueprint_id = "WHEAT"
+label = "Wheat Seeds"
+stock_short = "W"
+base_price = 5.0
+growth = 1.1
+placement_type = "CROP"
+crop_type = "WHEAT"

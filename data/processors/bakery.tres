@@ -1,0 +1,40 @@
+[gd_resource type="Resource" script_class="ProcessorDefinition" load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://systems/data/processor_definition.gd" id="1"]
+[ext_resource type="Script" path="res://systems/data/resource_amount_definition.gd" id="2"]
+[ext_resource type="Resource" path="res://data/items/flour.tres" id="3"]
+[ext_resource type="Resource" path="res://data/items/egg.tres" id="4"]
+[ext_resource type="Resource" path="res://data/items/milk.tres" id="5"]
+[ext_resource type="Resource" path="res://data/items/cake.tres" id="6"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+item_def = ExtResource("3")
+amount = 1
+
+[sub_resource type="Resource" id="2"]
+script = ExtResource("2")
+item_def = ExtResource("4")
+amount = 1
+
+[sub_resource type="Resource" id="3"]
+script = ExtResource("2")
+item_def = ExtResource("5")
+amount = 1
+
+[sub_resource type="Resource" id="4"]
+script = ExtResource("2")
+item_def = ExtResource("6")
+amount = 1
+
+[resource]
+script = ExtResource("1")
+processor_type = "BAKERY"
+label = "Bakery"
+base_duration = 15.0
+ready_state_name = "CAKE_READY"
+ready_texture_path = "res://assets/sprites/bakery_final.png"
+deliver_storage_pos = Vector2i(-2, -1)
+collect_storage_pos = Vector2i(2, -1)
+inputs = [SubResource("1"), SubResource("2"), SubResource("3")]
+outputs = [SubResource("4")]

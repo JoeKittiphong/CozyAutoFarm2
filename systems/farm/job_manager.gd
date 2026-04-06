@@ -1,10 +1,12 @@
 extends Node
 class_name JobManagerClass
 
+const GameData = preload("res://systems/core/game_data.gd")
+
 var jobs: Array[Dictionary] = []
 
 func add_job(type: String, target_pos: Vector2i, extra_data: Dictionary = {}) -> void:
-    if type != "FETCH_ANIMAL":
+    if type != GameData.JOB_FETCH_ANIMAL:
         for job in jobs:
             if job.target_pos == target_pos and job.type == type:
                 return
