@@ -1,18 +1,28 @@
 extends Node2D
 
-@onready var ground_layer: Node2D = $GroundLayer
+const MapScannerClass = preload("res://systems/grid/map_scanner.gd")
+const TILE_SIZE := 128
+const DEFAULT_MAP_RECT := Rect2i(-15, -10, 30, 20)
+const GROUND_SOURCE_ID := 0
+const GROUND_ATLAS_COORDS := Vector2i.ZERO
+
+@onready var ground_layer: TileMapLayer = $GroundLayer
+@onready var obstacles_layer: TileMapLayer = $ObstaclesLayer
 @onready var farm_layer: Node2D = $FarmLayer
 @onready var highlight_rect: ColorRect = $HighlightRect
+@onready var house_marker: Marker2D = $HouseMarker
+@onready var shop_marker: Marker2D = $ShopMarker
+@onready var worker_spawn_marker: Marker2D = $WorkerSpawnMarker
+@onready var animal_shop_spawn_marker: Marker2D = $AnimalShopSpawnMarker
 @onready var _farm_manager: Node = get_node("/root/FarmManager")
 @onready var _inventory_manager: Node = get_node("/root/InventoryManager")
 @onready var _job_manager: Node = get_node("/root/JobManager")
 
-const TILE_SIZE = 128
-
 func _ready() -> void:
 	highlight_rect.size = Vector2(TILE_SIZE, TILE_SIZE)
 	highlight_rect.color = Color(1, 1, 1, 0.3)
-	_generate_initial_grass()
+	_ensure_default_ground_tiles()
+	_scan_editor_map()
 	_spawn_worker_system()
 
 	var hud_scene = load("res://scenes/ui/hud.tscn")
@@ -20,21 +30,32 @@ func _ready() -> void:
 		var hud = hud_scene.instantiate()
 		add_child(hud)
 
+func _ensure_default_ground_tiles() -> void:
+	if not ground_layer.get_used_cells().is_empty():
+		return
+
+	for x in range(DEFAULT_MAP_RECT.position.x, DEFAULT_MAP_RECT.end.x):
+		for y in range(DEFAULT_MAP_RECT.position.y, DEFAULT_MAP_RECT.end.y):
+			ground_layer.set_cell(Vector2i(x, y), GROUND_SOURCE_ID, GROUND_ATLAS_COORDS)
+
+func _scan_editor_map() -> void:
+	MapScannerClass.apply_layers_to_grid(ground_layer, obstacles_layer)
+
 func _spawn_worker_system() -> void:
-	var house_pos = Vector2i(-2, -2)
+	var house_pos: Vector2i = _marker_to_grid(house_marker)
 	_spawn_sprite(farm_layer, house_pos, "res://assets/sprites/worker_house.png", Color.BROWN)
 	GridManager.set_cell_solid(house_pos, true)
 
-	var shop_pos = Vector2i(-6, -2)
+	var shop_pos: Vector2i = _marker_to_grid(shop_marker)
 	_spawn_sprite(farm_layer, shop_pos, "res://assets/sprites/shop_building.png", Color.BROWN)
 	GridManager.set_cell_solid(shop_pos, true)
 
 	_spawn_worker()
 
 func _spawn_worker() -> void:
-	var WorkerScript = load("res://entities/worker/worker.gd")
-	var worker_node = WorkerScript.new()
-	worker_node.position = Vector2(-2 * TILE_SIZE, -1 * TILE_SIZE)
+	var worker_script = load("res://entities/worker/worker.gd")
+	var worker_node = worker_script.new()
+	worker_node.position = worker_spawn_marker.global_position
 	worker_node.position.x += randf_range(-15, 15)
 	worker_node.position.y += randf_range(-15, 15)
 	add_child(worker_node)
@@ -43,27 +64,47 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var mouse_pos = get_global_mouse_position()
 		var grid_pos = _get_grid_position(mouse_pos)
-		highlight_rect.global_position = grid_pos * TILE_SIZE
+		highlight_rect.global_position = _grid_to_world_top_left(grid_pos)
 	elif event is InputEventMouseButton and event.pressed:
 		var mouse_pos = get_global_mouse_position()
-		var grid_pos = Vector2i(_get_grid_position(mouse_pos))
+		var grid_pos = _get_grid_position(mouse_pos)
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_handle_left_click(grid_pos)
 
-func _get_grid_position(world_pos: Vector2) -> Vector2:
-	return Vector2(floor(world_pos.x / TILE_SIZE), floor(world_pos.y / TILE_SIZE))
+func _get_grid_position(world_pos: Vector2) -> Vector2i:
+	var local_pos = ground_layer.to_local(world_pos)
+	return ground_layer.local_to_map(local_pos)
+
+func _grid_to_world_center(grid_pos: Vector2i) -> Vector2:
+	return ground_layer.to_global(ground_layer.map_to_local(grid_pos))
+
+func _grid_to_world_top_left(grid_pos: Vector2i) -> Vector2:
+	return _grid_to_world_center(grid_pos) - Vector2(TILE_SIZE, TILE_SIZE) * 0.5
+
+func _marker_to_grid(marker: Marker2D) -> Vector2i:
+	return _get_grid_position(marker.global_position)
+
+func _is_house_interaction_cell(grid_pos: Vector2i) -> bool:
+	var house_origin: Vector2i = _marker_to_grid(house_marker)
+	return grid_pos.x >= house_origin.x and grid_pos.x <= house_origin.x + 1 and grid_pos.y >= house_origin.y and grid_pos.y <= house_origin.y + 1
+
+func _is_shop_interaction_cell(grid_pos: Vector2i) -> bool:
+	return grid_pos == _marker_to_grid(shop_marker)
 
 func _handle_left_click(grid_pos: Vector2i) -> void:
-	if grid_pos.x >= -2 and grid_pos.x <= -1 and grid_pos.y >= -2 and grid_pos.y <= -1:
+	if _is_house_interaction_cell(grid_pos):
 		var hud = get_node_or_null("HUD")
 		if hud:
 			hud.toggle_worker_house()
 		return
 
-	if grid_pos == Vector2i(-6, -2):
+	if _is_shop_interaction_cell(grid_pos):
 		var hud = get_node_or_null("HUD")
 		if hud:
 			hud.toggle_shop()
+		return
+
+	if GridManager.is_cell_solid(grid_pos) and _farm_manager.get_tile_state(grid_pos) == _farm_manager.TileState.EMPTY:
 		return
 
 	if _farm_manager.get_tile_state(grid_pos) == _farm_manager.TileState.EMPTY:
@@ -81,7 +122,7 @@ func _place_available_blueprint(grid_pos: Vector2i, inv: Node, f_manager: Node) 
 		if not inv.consume_blueprint(blueprint_type):
 			return
 
-		var blueprint_def := GameData.get_blueprint_def(blueprint_type)
+		var blueprint_def = GameData.get_blueprint_def(blueprint_type)
 		if blueprint_def == null:
 			return
 
@@ -123,18 +164,18 @@ func has_empty_pen(pen_type: String) -> bool:
 	return false
 
 func _spawn_animal_at_shop(type: String) -> void:
-	var animal_def := GameData.get_animal_def(type)
+	var animal_def = GameData.get_animal_def(type)
 	if animal_def == null:
 		return
-	var AnimalScript = load(animal_def.script_path)
-	if AnimalScript:
-		var animal = AnimalScript.new()
+	var animal_script = load(animal_def.script_path)
+	if animal_script:
+		var animal = animal_script.new()
 		animal.animal_type = type
-		animal.position = Vector2(-6 * TILE_SIZE, -1 * TILE_SIZE)
+		animal.position = animal_shop_spawn_marker.global_position
 		animal.state = GameData.STATE_WAITING_DELIVERY
 		add_child(animal)
 		if _job_manager:
-			_job_manager.add_job(GameData.JOB_FETCH_ANIMAL, Vector2i(-6, -1), {"animal_node": animal, "animal_type": type})
+			_job_manager.add_job(GameData.JOB_FETCH_ANIMAL, _marker_to_grid(animal_shop_spawn_marker), {"animal_node": animal, "animal_type": type})
 
 func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String) -> void:
 	var node_name = "Tile_" + str(grid_pos.x) + "_" + str(grid_pos.y)
@@ -152,7 +193,7 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 
 	if tile == null:
 		tile = _create_sprite_node(tex_path, Color.WHITE)
-		tile.position = Vector2(grid_pos.x * TILE_SIZE + TILE_SIZE / 2.0, grid_pos.y * TILE_SIZE + TILE_SIZE / 2.0)
+		tile.position = _grid_to_world_center(grid_pos)
 		tile.name = node_name
 		farm_layer.add_child(tile)
 	else:
@@ -201,11 +242,5 @@ func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2
 
 func _spawn_sprite(parent: Node2D, grid_pos: Vector2i, texture_path: String, fallback_color: Color) -> void:
 	var sprite = _create_sprite_node(texture_path, fallback_color)
-	sprite.position = Vector2(grid_pos.x * TILE_SIZE + TILE_SIZE / 2.0, grid_pos.y * TILE_SIZE + TILE_SIZE / 2.0)
+	sprite.position = _grid_to_world_center(grid_pos)
 	parent.add_child(sprite)
-
-func _generate_initial_grass() -> void:
-	for x in range(-15, 15):
-		for y in range(-10, 10):
-			_spawn_sprite(ground_layer, Vector2i(x, y), "res://assets/sprites/grass.png", Color.DARK_GREEN)
-

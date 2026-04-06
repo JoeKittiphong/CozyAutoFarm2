@@ -138,4 +138,3 @@ func add_cake(amount: int) -> void:
 
 func spend_flour(amount: int) -> bool:
 	return spend_item(GameData.ITEM_FLOUR, amount)
-
