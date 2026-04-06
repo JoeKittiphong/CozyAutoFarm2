@@ -1,10 +1,16 @@
 extends Node2D
 class_name FarmWorker
 
-
 @export var move_speed: float = 300.0
-const TILE_SIZE = 128
+const TILE_SIZE := 128
 const MAX_CARRY := 3
+static var _next_worker_id: int = 1
+
+var worker_id: int = 0
+var work_mode: String = GameData.WORK_MODE_AUTO
+var assigned_role: String = GameData.WORKER_ROLE_CROP_CARE
+var assigned_target_id: String = ""
+var allow_fallback_jobs: bool = true
 
 var current_path: Array[Vector2i] = []
 var current_job: Dictionary = {}
@@ -20,6 +26,12 @@ var _work_tween: Tween
 @onready var _grid_manager: Node = get_node("/root/GridManager")
 
 func _ready() -> void:
+	if worker_id == 0:
+		worker_id = _next_worker_id
+		_next_worker_id += 1
+	name = "Worker_%d" % worker_id
+	add_to_group("workers")
+
 	var tex = ResourceLoader.load("res://assets/sprites/worker.png")
 	if tex == null:
 		var fallback = GradientTexture2D.new()
@@ -45,7 +57,7 @@ func _process(delta: float) -> void:
 
 	if current_path.is_empty():
 		if current_job.is_empty():
-			var job = _job_manager.get_next_job()
+			var job = _job_manager.get_next_job_for_worker(self)
 			if job.is_empty():
 				if _get_total_carried_items() > 0:
 					_start_delivery()
@@ -83,8 +95,85 @@ func _process(delta: float) -> void:
 		else:
 			position += dir * move_amount
 
+func uses_auto_job_selection() -> bool:
+	return work_mode != GameData.WORK_MODE_ASSIGNED
+
+func can_help_when_idle() -> bool:
+	return work_mode == GameData.WORK_MODE_ASSIGNED and allow_fallback_jobs
+
+func set_assignment(mode: String, role: String, target_id: String, allow_fallback: bool) -> void:
+	work_mode = mode
+	assigned_role = role
+	assigned_target_id = target_id
+	allow_fallback_jobs = allow_fallback
+
+func get_assignment_data() -> Dictionary:
+	return {
+		"mode": work_mode,
+		"role": assigned_role,
+		"target_id": assigned_target_id,
+		"allow_fallback": allow_fallback_jobs,
+	}
+
+func get_display_name() -> String:
+	return "Worker #%d" % worker_id
+
+func get_assignment_summary() -> String:
+	if uses_auto_job_selection():
+		return "Auto"
+	var role_label: String = GameData.get_worker_role_label(assigned_role)
+	var target_label: String = GameData.get_worker_target_label(assigned_role, assigned_target_id)
+	var fallback_label := "Help" if allow_fallback_jobs else "Strict"
+	return "%s / %s / %s" % [role_label, target_label, fallback_label]
+
+func get_current_status() -> String:
+	if not current_job.is_empty():
+		return String(current_job.get("type", "Working"))
+	if _get_total_carried_items() > 0:
+		return "Delivering"
+	return "Idle"
+
+func matches_job(job: Dictionary) -> bool:
+	if uses_auto_job_selection():
+		return true
+
+	var job_type: String = String(job.get("type", ""))
+	match assigned_role:
+		GameData.WORKER_ROLE_CROP_CARE:
+			if job_type not in [GameData.JOB_TILL, GameData.JOB_PLANT, GameData.JOB_WATER, GameData.JOB_HARVEST]:
+				return false
+			if assigned_target_id == "":
+				return true
+			var job_crop_type: String = String(job.get("item_type", job.get("crop_type", _farm_manager.get_tile_type(job.target_pos))))
+			return job_crop_type == assigned_target_id
+		GameData.WORKER_ROLE_PROCESSOR_DELIVERY:
+			if job_type != GameData.JOB_PROCESSOR_DELIVER:
+				return false
+			if assigned_target_id == "":
+				return true
+			return _farm_manager.get_processor_type(job.target_pos) == assigned_target_id
+		GameData.WORKER_ROLE_PROCESSOR_COLLECT:
+			if job_type != GameData.JOB_PROCESSOR_COLLECT:
+				return false
+			if assigned_target_id == "":
+				return true
+			return _farm_manager.get_processor_type(job.target_pos) == assigned_target_id
+		GameData.WORKER_ROLE_ANIMAL_CARE:
+			if job_type not in [GameData.JOB_FEED_ANIMAL, GameData.JOB_COLLECT_ANIMAL_PRODUCT, GameData.JOB_FETCH_ANIMAL]:
+				return false
+			if assigned_target_id == "":
+				return true
+			var animal_def = GameData.get_animal_def(assigned_target_id)
+			if animal_def == null:
+				return false
+			return String(job.get("group_name", animal_def.group_name)) == animal_def.group_name or String(job.get("animal_type", assigned_target_id)) == assigned_target_id
+		GameData.WORKER_ROLE_GENERAL_DELIVERY:
+			return job_type == GameData.JOB_DELIVER
+		_:
+			return true
+
 func _is_complex_job(job: Dictionary) -> bool:
-	var job_type := String(job.get("type", ""))
+	var job_type: String = String(job.get("type", ""))
 	return job_type in [
 		GameData.JOB_FEED_ANIMAL,
 		GameData.JOB_COLLECT_ANIMAL_PRODUCT,
@@ -217,8 +306,8 @@ func _handle_fetch_animal() -> void:
 		carried_animal.visible = false
 		_update_carried_visual()
 
-		var animal_type := String(current_job.get("animal_type", ""))
-		var animal_def := GameData.get_animal_def(animal_type)
+		var animal_type: String = String(current_job.get("animal_type", ""))
+		var animal_def = GameData.get_animal_def(animal_type)
 		if animal_def == null:
 			carried_animal.visible = true
 			carried_animal = null
@@ -231,7 +320,7 @@ func _handle_fetch_animal() -> void:
 		for cell in _farm_manager._farm_data.keys():
 			if _farm_manager.get_tile_type(cell) != pen_type:
 				continue
-			var has_an = false
+			var has_an := false
 			for animal in get_tree().get_nodes_in_group(animal_def.group_name):
 				if animal.home_pos == cell:
 					has_an = true
@@ -259,8 +348,8 @@ func _handle_fetch_animal() -> void:
 	is_working = false
 
 func _handle_processor_deliver() -> void:
-	var item_type := String(current_job.get("item_type", ""))
-	var amount := int(current_job.get("amount", 1))
+	var item_type: String = String(current_job.get("item_type", ""))
+	var amount: int = int(current_job.get("amount", 1))
 	var storage_pos := Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type)))
 	if _get_carried_amount(item_type) < amount:
 		var grid_pos = _get_current_grid_pos()
@@ -290,8 +379,8 @@ func _handle_processor_deliver() -> void:
 	is_working = false
 
 func _handle_processor_collect() -> void:
-	var item_type := String(current_job.get("item_type", ""))
-	var amount := int(current_job.get("amount", 1))
+	var item_type: String = String(current_job.get("item_type", ""))
+	var amount: int = int(current_job.get("amount", 1))
 	var storage_pos := Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type)))
 	if _get_carried_amount(item_type) < amount:
 		var grid_pos = _get_current_grid_pos()
@@ -354,12 +443,12 @@ func _update_carried_visual() -> void:
 	var count := 0
 	var carried_item := _get_primary_carried_item()
 	if carried_item != "":
-		var item_def := GameData.get_item_def(carried_item)
+		var item_def = GameData.get_item_def(carried_item)
 		tex_path = item_def.icon_path if item_def != null else ""
 		count = _get_carried_amount(carried_item)
 	elif carried_animal != null:
-		var animal_type := String(current_job.get("animal_type", GameData.ANIMAL_CHICKEN))
-		var animal_def := GameData.get_animal_def(animal_type)
+		var animal_type: String = String(current_job.get("animal_type", GameData.ANIMAL_CHICKEN))
+		var animal_def = GameData.get_animal_def(animal_type)
 		tex_path = animal_def.icon_path if animal_def != null else ""
 		count = 1
 
@@ -393,6 +482,3 @@ func _complete_delivery() -> void:
 	carried_items.clear()
 	current_job.clear()
 	is_working = false
-
-
-

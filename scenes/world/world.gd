@@ -8,7 +8,10 @@ const GROUND_ATLAS_COORDS := Vector2i.ZERO
 
 @onready var ground_layer: TileMapLayer = $GroundLayer
 @onready var obstacles_layer: TileMapLayer = $ObstaclesLayer
-@onready var farm_layer: Node2D = $FarmLayer
+@onready var plot_layer: Node2D = $PlotLayer
+@onready var pen_layer: Node2D = $PenLayer
+@onready var building_layer: Node2D = $BuildingLayer
+@onready var actor_layer: Node2D = $ActorLayer
 @onready var highlight_rect: ColorRect = $HighlightRect
 @onready var house_marker: Marker2D = $HouseMarker
 @onready var shop_marker: Marker2D = $ShopMarker
@@ -43,11 +46,11 @@ func _scan_editor_map() -> void:
 
 func _spawn_worker_system() -> void:
 	var house_pos: Vector2i = _marker_to_grid(house_marker)
-	_spawn_sprite(farm_layer, house_pos, "res://assets/sprites/worker_house.png", Color.BROWN)
+	_spawn_sprite(building_layer, house_pos, "res://assets/sprites/worker_house.png", Color.BROWN)
 	GridManager.set_cell_solid(house_pos, true)
 
 	var shop_pos: Vector2i = _marker_to_grid(shop_marker)
-	_spawn_sprite(farm_layer, shop_pos, "res://assets/sprites/shop_building.png", Color.BROWN)
+	_spawn_sprite(building_layer, shop_pos, "res://assets/sprites/shop_building.png", Color.BROWN)
 	GridManager.set_cell_solid(shop_pos, true)
 
 	_spawn_worker()
@@ -58,7 +61,7 @@ func _spawn_worker() -> void:
 	worker_node.position = worker_spawn_marker.global_position
 	worker_node.position.x += randf_range(-15, 15)
 	worker_node.position.y += randf_range(-15, 15)
-	add_child(worker_node)
+	actor_layer.add_child(worker_node)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
@@ -130,7 +133,7 @@ func _place_available_blueprint(grid_pos: Vector2i, inv: Node, f_manager: Node) 
 			var crop_type: String = GameData.ITEM_WHEAT
 			if blueprint_def.crop_type != "":
 				crop_type = blueprint_def.crop_type
-			f_manager.place_blueprint(grid_pos, crop_type)
+			f_manager.place_blueprint(grid_pos, crop_type, blueprint_type)
 			update_tile_visual(grid_pos, "BLUEPRINT", "res://assets/sprites/dirt.png")
 		else:
 			var tile_type: String = blueprint_def.tile_type
@@ -138,13 +141,11 @@ func _place_available_blueprint(grid_pos: Vector2i, inv: Node, f_manager: Node) 
 				var processor_type: String = blueprint_def.processor_type
 				if processor_type == GameData.PROCESSOR_MILL:
 					inv.mill_count += 1
-				f_manager.register_processor(grid_pos, processor_type)
+				f_manager.register_processor(grid_pos, processor_type, blueprint_type)
 				tile_type = processor_type
 			else:
-				f_manager.register_building(grid_pos, tile_type)
-
-			update_tile_visual(grid_pos, tile_type, blueprint_def.texture_path)
-			GridManager.set_cell_solid(grid_pos, false)
+            f_manager.register_building(grid_pos, tile_type, blueprint_type)
+            GridManager.set_cell_solid(grid_pos, false)
 		return
 
 func has_empty_pen(pen_type: String) -> bool:
@@ -173,16 +174,18 @@ func _spawn_animal_at_shop(type: String) -> void:
 		animal.animal_type = type
 		animal.position = animal_shop_spawn_marker.global_position
 		animal.state = GameData.STATE_WAITING_DELIVERY
-		add_child(animal)
+		actor_layer.add_child(animal)
 		if _job_manager:
 			_job_manager.add_job(GameData.JOB_FETCH_ANIMAL, _marker_to_grid(animal_shop_spawn_marker), {"animal_node": animal, "animal_type": type})
 
 func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String) -> void:
 	var node_name = "Tile_" + str(grid_pos.x) + "_" + str(grid_pos.y)
-	var tile = farm_layer.get_node_or_null(node_name)
+	var tile = _find_tile_visual(node_name)
+	var target_layer: Node2D = _get_visual_layer(state_name, tex_path)
 
 	if tex_path == "" or tex_path.contains("blueprint_indicator"):
 		if tile != null:
+			_move_visual_to_layer(tile, target_layer)
 			tile.modulate = Color(1, 1, 1, 0.5)
 			var tex = ResourceLoader.load("res://assets/sprites/dirt.png")
 			if tex:
@@ -195,8 +198,9 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 		tile = _create_sprite_node(tex_path, Color.WHITE)
 		tile.position = _grid_to_world_center(grid_pos)
 		tile.name = node_name
-		farm_layer.add_child(tile)
+		target_layer.add_child(tile)
 	else:
+		_move_visual_to_layer(tile, target_layer)
 		var tex = ResourceLoader.load(tex_path)
 		if tex:
 			tile.texture = tex
@@ -209,6 +213,31 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 		tile.modulate = Color(1, 1, 1, 0.5)
 	else:
 		tile.modulate = Color(1, 1, 1, 1.0)
+
+func _find_tile_visual(node_name: String) -> Sprite2D:
+	for layer in [plot_layer, pen_layer, building_layer]:
+		var node = layer.get_node_or_null(node_name)
+		if node != null:
+			return node as Sprite2D
+	return null
+
+func _get_visual_layer(state_name: String, tex_path: String) -> Node2D:
+	if state_name == GameData.BLUEPRINT_COOP or state_name == GameData.BLUEPRINT_COW_PEN:
+		return pen_layer
+	if "coop" in tex_path or "cow_pen" in tex_path:
+		return pen_layer
+	if state_name == "BLUEPRINT" or "dirt" in tex_path or "sprout" in tex_path or "crop" in tex_path or "ready" in tex_path:
+		return plot_layer
+	return building_layer
+
+func _move_visual_to_layer(tile: Sprite2D, target_layer: Node2D) -> void:
+	if tile.get_parent() == target_layer:
+		return
+	var old_position: Vector2 = tile.global_position
+	if tile.get_parent() != null:
+		tile.get_parent().remove_child(tile)
+	target_layer.add_child(tile)
+	tile.global_position = old_position
 
 func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2D:
 	var sprite = Sprite2D.new()
@@ -232,7 +261,7 @@ func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2
 		sprite.texture = tex
 		var t_size = tex.get_size()
 		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y)
-		if "crop" in texture_path:
+		if "crop" in texture_path or "sprout" in texture_path or "ready" in texture_path:
 			sprite.scale *= 0.6
 		if "worker_house" in texture_path:
 			sprite.scale *= 2.0
@@ -244,3 +273,4 @@ func _spawn_sprite(parent: Node2D, grid_pos: Vector2i, texture_path: String, fal
 	var sprite = _create_sprite_node(texture_path, fallback_color)
 	sprite.position = _grid_to_world_center(grid_pos)
 	parent.add_child(sprite)
+

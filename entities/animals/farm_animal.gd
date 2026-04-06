@@ -109,3 +109,15 @@ func _apply_definition() -> void:
 		var t_size = tex.get_size()
 		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y) * animal_def.sprite_scale
 	sprite.position = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+
+func update_visual(level: int) -> void:
+	var animal_def = GameData.get_animal_def(animal_type)
+	if animal_def == null:
+		return
+	
+	var tex_path: String = GameData.get_animal_level_texture(animal_type, level)
+	var tex = ResourceLoader.load(tex_path)
+	if tex:
+		sprite.texture = tex
+		var t_size = tex.get_size()
+		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y) * animal_def.sprite_scale

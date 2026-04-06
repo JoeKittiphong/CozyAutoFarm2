@@ -42,8 +42,8 @@ func _process_crop_growth(cell: Vector2i, delta: float) -> void:
 
 	_farm_data[cell]["state"] = TileState.READY_TO_HARVEST
 	_growth_time.erase(cell)
-	_job_manager.add_job(GameData.JOB_HARVEST, cell)
-	_notify_world_visual(cell, "READY", GameData.get_crop_visual(get_tile_type(cell), "ready"))
+	_job_manager.add_job(GameData.JOB_HARVEST, cell, {"crop_type": get_tile_type(cell), "item_type": get_tile_type(cell)})
+	_notify_world_visual(cell, "READY", GameData.get_crop_visual(get_tile_type(cell), "ready", get_tile_level(cell)))
 
 func _process_processor(cell: Vector2i, delta: float) -> void:
 	if not _processor_data.has(cell):
@@ -60,36 +60,41 @@ func _process_processor(cell: Vector2i, delta: float) -> void:
 				"amount": int(output_def.get("amount", 1)),
 				"storage_pos": data.get("collect_storage_pos", GameData.PROCESSING_STORAGE_POS),
 			})
-			_notify_world_visual(cell, String(data.get("ready_state_name", "READY")), String(data.get("ready_texture_path", "")))
+			_notify_world_visual(cell, String(data.get("ready_state_name", "READY")), GameData.get_processor_ready_texture(String(data.get("processor_type", "")), get_tile_level(cell)))
 	elif data.get("state", "WAITING") == "WAITING":
 		_request_processor_ingredients(cell)
 
-func place_blueprint(cell: Vector2i, crop_type: String = GameData.ITEM_WHEAT) -> void:
+func place_blueprint(cell: Vector2i, crop_type: String = GameData.ITEM_WHEAT, blueprint_id: String = "") -> void:
 	if get_tile_state(cell) != TileState.EMPTY:
 		return
+	if blueprint_id == "":
+		blueprint_id = crop_type
 
 	_farm_data[cell] = {
 		"state": TileState.BLUEPRINT,
 		"type": crop_type,
+		"blueprint_id": blueprint_id,
 		"level": 1,
 	}
-	_job_manager.add_job(GameData.JOB_TILL, cell)
+	_job_manager.add_job(GameData.JOB_TILL, cell, {"crop_type": crop_type, "item_type": crop_type})
 
 func complete_till(cell: Vector2i) -> void:
 	if not _farm_data.has(cell) or get_tile_state(cell) != TileState.BLUEPRINT:
 		return
 
+	var crop_type: String = get_tile_type(cell)
 	_farm_data[cell]["state"] = TileState.TILLED
-	_job_manager.add_job(GameData.JOB_PLANT, cell)
+	_job_manager.add_job(GameData.JOB_PLANT, cell, {"crop_type": crop_type, "item_type": crop_type})
 	_notify_world_visual(cell, "TILLED", "res://assets/sprites/dirt.png")
 
 func complete_plant(cell: Vector2i) -> void:
 	if not _farm_data.has(cell) or get_tile_state(cell) != TileState.TILLED:
 		return
 
+	var crop_type: String = get_tile_type(cell)
 	_farm_data[cell]["state"] = TileState.PLANTED
-	_job_manager.add_job(GameData.JOB_WATER, cell)
-	_notify_world_visual(cell, "PLANTED", GameData.get_crop_visual(get_tile_type(cell), "sprout"))
+	_job_manager.add_job(GameData.JOB_WATER, cell, {"crop_type": crop_type, "item_type": crop_type})
+	_notify_world_visual(cell, "PLANTED", GameData.get_crop_visual(crop_type, "sprout", get_tile_level(cell)))
 
 func complete_water(cell: Vector2i) -> void:
 	if not _farm_data.has(cell) or get_tile_state(cell) != TileState.PLANTED:
@@ -102,8 +107,9 @@ func complete_harvest(cell: Vector2i) -> void:
 	if not _farm_data.has(cell) or get_tile_state(cell) != TileState.READY_TO_HARVEST:
 		return
 
+	var crop_type: String = get_tile_type(cell)
 	_farm_data[cell]["state"] = TileState.BLUEPRINT
-	_job_manager.add_job(GameData.JOB_TILL, cell)
+	_job_manager.add_job(GameData.JOB_TILL, cell, {"crop_type": crop_type, "item_type": crop_type})
 	_notify_world_visual(cell, "HARVESTED", "res://assets/sprites/blueprint_indicator.png")
 
 func get_tile_state(cell: Vector2i) -> int:
@@ -116,6 +122,11 @@ func get_tile_type(cell: Vector2i) -> String:
 		return ""
 	return String(_farm_data[cell].get("type", ""))
 
+func get_blueprint_id(cell: Vector2i) -> String:
+	if not _farm_data.has(cell):
+		return ""
+	return String(_farm_data[cell].get("blueprint_id", get_tile_type(cell)))
+
 func get_processor_type(cell: Vector2i) -> String:
 	if not _processor_data.has(cell):
 		return ""
@@ -127,22 +138,29 @@ func _notify_world_visual(cell: Vector2i, state_name: String, tex_path: String) 
 	if _world != null:
 		_world.update_tile_visual(cell, state_name, tex_path)
 
-func register_building(cell: Vector2i, tile_type: String) -> void:
+func register_building(cell: Vector2i, tile_type: String, blueprint_id: String = "") -> void:
+	if blueprint_id == "":
+		blueprint_id = tile_type
 	var tile_state := TileState.COOP if tile_type == GameData.BLUEPRINT_COOP else TileState.COW_PEN
 	_farm_data[cell] = {
 		"state": tile_state,
 		"type": tile_type,
+		"blueprint_id": blueprint_id,
 		"level": 1,
 	}
+	_notify_world_visual(cell, tile_type, GameData.get_blueprint_level_texture(blueprint_id, 1))
 
-func register_processor(cell: Vector2i, processor_type: String) -> void:
+func register_processor(cell: Vector2i, processor_type: String, blueprint_id: String = "") -> void:
 	var processor_def := GameData.get_processor_def(processor_type)
 	if processor_def == null:
 		return
+	if blueprint_id == "":
+		blueprint_id = processor_type
 
 	_farm_data[cell] = {
 		"state": TileState.PROCESSOR,
 		"type": processor_type,
+		"blueprint_id": blueprint_id,
 		"level": 1,
 	}
 	_processor_data[cell] = {
@@ -157,6 +175,7 @@ func register_processor(cell: Vector2i, processor_type: String) -> void:
 		"ready_state_name": processor_def.ready_state_name,
 		"ready_texture_path": processor_def.ready_texture_path,
 	}
+	_notify_world_visual(cell, processor_type, GameData.get_processor_level_texture(processor_type, 1))
 
 func _request_processor_ingredients(cell: Vector2i) -> void:
 	var data: Dictionary = _processor_data.get(cell, {})
@@ -227,6 +246,7 @@ func collect_from_processor(cell: Vector2i) -> Dictionary:
 	data["state"] = "WAITING"
 	data["timer"] = 0.0
 	data["jobs_requested"] = []
+	_notify_world_visual(cell, String(data.get("processor_type", "")), GameData.get_processor_level_texture(String(data.get("processor_type", "")), get_tile_level(cell)))
 	return result
 
 func _has_all_processor_inputs(processor_def, stored_inputs: Dictionary) -> bool:
@@ -272,5 +292,32 @@ func upgrade_tile(cell: Vector2i) -> bool:
 	data["level"] = lvl + 1
 	if _processor_data.has(cell):
 		_processor_data[cell]["level"] = lvl + 1
+	_refresh_tile_visual(cell)
 	_inventory_manager.resources_updated.emit()
 	return true
+
+func _refresh_tile_visual(cell: Vector2i) -> void:
+	var state: int = get_tile_state(cell)
+	var level: int = get_tile_level(cell)
+	match state:
+		TileState.PLANTED, TileState.GROWING:
+			_notify_world_visual(cell, "PLANTED", GameData.get_crop_visual(get_tile_type(cell), "sprout", level))
+		TileState.READY_TO_HARVEST:
+			_notify_world_visual(cell, "READY", GameData.get_crop_visual(get_tile_type(cell), "ready", level))
+		TileState.COOP, TileState.COW_PEN:
+			_notify_world_visual(cell, get_tile_type(cell), GameData.get_blueprint_level_texture(get_blueprint_id(cell), level))
+			# Notify animals in this pen
+			var animal_defs = GameData.get_animal_defs_for_pen(get_tile_type(cell))
+			for animal_def in animal_defs:
+				for animal in get_tree().get_nodes_in_group(animal_def.group_name):
+					if animal is FarmAnimal and animal.home_pos == cell:
+						animal.update_visual(level)
+		TileState.PROCESSOR:
+			var processor_type: String = get_processor_type(cell)
+			var processor_state: String = String(_processor_data.get(cell, {}).get("state", "WAITING"))
+			if processor_state == "READY":
+				_notify_world_visual(cell, processor_type, GameData.get_processor_ready_texture(processor_type, level))
+			else:
+				_notify_world_visual(cell, processor_type, GameData.get_processor_level_texture(processor_type, level))
+		_:
+			pass

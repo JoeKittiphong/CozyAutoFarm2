@@ -9,6 +9,9 @@ class_name ProcessorDefinition
 @export var base_duration: float = 1.0
 @export var ready_state_name: String = "READY"
 @export_file("*.png") var ready_texture_path: String = ""
+@export var ready_level_textures: Array[String] = []
+@export_file("*.png") var idle_texture_path: String = ""
+@export var level_textures: Array[String] = []
 @export var deliver_storage_pos: Vector2i = Vector2i.ZERO
 @export var collect_storage_pos: Vector2i = Vector2i.ZERO
 @export var inputs: Array = [] # Array[ResourceAmountDefinition]

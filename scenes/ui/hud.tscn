@@ -49,6 +49,18 @@ corner_radius_bottom_right = 10
 corner_radius_top_left = 10
 corner_radius_top_right = 10
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_manage"]
+bg_color = Color(0.14, 0.12, 0.2, 0.96)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.8, 0.7, 0.95, 1)
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
 
@@ -77,6 +89,10 @@ size_flags_horizontal = 3
 [node name="WarehouseButton" type="Button" parent="TopBar/BarContent"]
 custom_minimum_size = Vector2(120, 0)
 text = "Warehouse"
+
+[node name="WorkersButton" type="Button" parent="TopBar/BarContent"]
+custom_minimum_size = Vector2(120, 0)
+text = "Workers"
 
 [node name="MillButton" type="Button" parent="TopBar/BarContent"]
 custom_minimum_size = Vector2(120, 0)
@@ -120,6 +136,73 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
 [node name="CloseButton" type="Button" parent="SidePanels/WarehousePanel/Content"]
+text = "Close"
+
+[node name="WorkerManagePanel" type="PanelContainer" parent="SidePanels"]
+visible = false
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -430.0
+offset_right = -10.0
+offset_top = 10.0
+offset_bottom = 700.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_manage")
+
+[node name="Content" type="VBoxContainer" parent="SidePanels/WorkerManagePanel"]
+theme_override_constants/separation = 12
+
+[node name="TopSpacer" type="Control" parent="SidePanels/WorkerManagePanel/Content"]
+custom_minimum_size = Vector2(0, 16)
+
+[node name="Title" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+text = "--- WORKER MANAGEMENT ---"
+horizontal_alignment = 1
+
+[node name="InfoLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+text = "Select a worker and assign a focus."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="WorkerScroll" type="ScrollContainer" parent="SidePanels/WorkerManagePanel/Content"]
+custom_minimum_size = Vector2(0, 260)
+size_flags_vertical = 3
+
+[node name="WorkerList" type="VBoxContainer" parent="SidePanels/WorkerManagePanel/Content/WorkerScroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="SelectedWorkerLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+text = "No worker selected"
+horizontal_alignment = 1
+
+theme_override_colors/font_color = Color(0.9, 0.9, 1, 1)
+
+[node name="ModeLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+text = "Mode"
+
+[node name="ModeOption" type="OptionButton" parent="SidePanels/WorkerManagePanel/Content"]
+
+[node name="RoleLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+text = "Role"
+
+[node name="RoleOption" type="OptionButton" parent="SidePanels/WorkerManagePanel/Content"]
+
+[node name="TargetLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+text = "Target"
+
+[node name="TargetOption" type="OptionButton" parent="SidePanels/WorkerManagePanel/Content"]
+
+[node name="FallbackCheck" type="CheckButton" parent="SidePanels/WorkerManagePanel/Content"]
+button_pressed = true
+text = "Help When Idle"
+
+[node name="ApplyButton" type="Button" parent="SidePanels/WorkerManagePanel/Content"]
+text = "Apply Assignment"
+
+[node name="ResetButton" type="Button" parent="SidePanels/WorkerManagePanel/Content"]
+text = "Return To Auto"
+
+[node name="CloseButton" type="Button" parent="SidePanels/WorkerManagePanel/Content"]
 text = "Close"
 
 [node name="ShopPanel" type="PanelContainer" parent="SidePanels"]
@@ -235,4 +318,3 @@ text = "Upgrade"
 [node name="CloseButton" type="Button" parent="SidePanels/UpgradePanel/Content"]
 custom_minimum_size = Vector2(0, 50)
 text = "Close"
-

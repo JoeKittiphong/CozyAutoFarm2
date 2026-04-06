@@ -1,7 +1,6 @@
 class_name GameData
 extends RefCounted
 
-
 const STORAGE_POS := Vector2i(-2, -1)
 const PROCESSING_STORAGE_POS := Vector2i(2, -1)
 const SHOP_POS := Vector2i(-6, -1)
@@ -45,6 +44,14 @@ const JOB_FETCH_ANIMAL := "FETCH_ANIMAL"
 const JOB_PROCESSOR_DELIVER := "PROCESSOR_DELIVER"
 const JOB_PROCESSOR_COLLECT := "PROCESSOR_COLLECT"
 
+const WORK_MODE_AUTO := "AUTO"
+const WORK_MODE_ASSIGNED := "ASSIGNED"
+const WORKER_ROLE_CROP_CARE := "CROP_CARE"
+const WORKER_ROLE_PROCESSOR_DELIVERY := "PROCESSOR_DELIVERY"
+const WORKER_ROLE_PROCESSOR_COLLECT := "PROCESSOR_COLLECT"
+const WORKER_ROLE_ANIMAL_CARE := "ANIMAL_CARE"
+const WORKER_ROLE_GENERAL_DELIVERY := "GENERAL_DELIVERY"
+
 const STATE_WAITING_DELIVERY := "WAITING_DELIVERY"
 const STATE_HUNGRY := "HUNGRY"
 const STATE_WANDERING_FED := "WANDERING_FED"
@@ -77,6 +84,7 @@ const PREFERRED_BLUEPRINT_ORDER := [
 	BLUEPRINT_TOMATO_FACTORY,
 ]
 const PREFERRED_ANIMAL_ORDER := [ANIMAL_CHICKEN, ANIMAL_COW]
+const PREFERRED_PROCESSOR_ORDER := [PROCESSOR_MILL, PROCESSOR_BAKERY, PROCESSOR_TOMATO_FACTORY]
 
 const CROP_VISUALS := {
 	"WHEAT": {"sprout": "res://assets/sprites/wheat_sprout.png", "ready": "res://assets/sprites/wheat_ready.png"},
@@ -157,6 +165,13 @@ static func _sort_ids_with_preferred(ids: Array, preferred_order: Array) -> Arra
 		sorted_ids.append(leftover_id)
 	return sorted_ids
 
+static func _get_level_texture(level_textures: Array[String], level: int, fallback: String = "") -> String:
+	if level_textures.is_empty():
+		return fallback
+	var idx: int = clamp(level - 1, 0, level_textures.size() - 1)
+	var path: String = String(level_textures[idx])
+	return path if path != "" else fallback
+
 static func get_item_order() -> Array[String]:
 	_ensure_resource_maps()
 	return _item_order.duplicate()
@@ -181,13 +196,46 @@ static func get_blueprint_def(blueprint_type: String) -> BlueprintDefinition:
 	_ensure_resource_maps()
 	return _blueprint_defs_by_id.get(blueprint_type, null)
 
-static func get_crop_visual(crop_type: String, stage: String) -> String:
+static func get_blueprint_level_texture(blueprint_type: String, level: int) -> String:
+	var blueprint_def: BlueprintDefinition = get_blueprint_def(blueprint_type)
+	if blueprint_def == null:
+		return ""
+	return _get_level_texture(blueprint_def.level_textures, level, blueprint_def.texture_path)
+
+static func get_crop_visual(crop_type: String, stage: String, level: int = 1) -> String:
+	var blueprint_def: BlueprintDefinition = get_blueprint_def(crop_type)
+	if blueprint_def != null:
+		if stage == "sprout":
+			var sprout_fallback: String = String(CROP_VISUALS.get(crop_type, {}).get("sprout", ""))
+			return _get_level_texture(blueprint_def.level_sprout_textures, level, sprout_fallback)
+		if stage == "ready":
+			var ready_fallback: String = String(CROP_VISUALS.get(crop_type, {}).get("ready", ""))
+			return _get_level_texture(blueprint_def.level_ready_textures, level, ready_fallback)
 	var crop_visuals: Dictionary = CROP_VISUALS.get(crop_type, CROP_VISUALS["WHEAT"])
 	return String(crop_visuals.get(stage, ""))
 
 static func get_processor_def(processor_type: String) -> ProcessorDefinition:
 	_ensure_resource_maps()
 	return _processor_defs_by_id.get(processor_type, null)
+
+static func get_processor_level_texture(processor_type: String, level: int) -> String:
+	var processor_def: ProcessorDefinition = get_processor_def(processor_type)
+	if processor_def == null:
+		return ""
+	var idle_fallback: String = processor_def.idle_texture_path if processor_def.idle_texture_path != "" else processor_def.ready_texture_path
+	return _get_level_texture(processor_def.level_textures, level, idle_fallback)
+
+static func get_processor_ready_texture(processor_type: String, level: int) -> String:
+	var processor_def: ProcessorDefinition = get_processor_def(processor_type)
+	if processor_def == null:
+		return ""
+	return _get_level_texture(processor_def.ready_level_textures, level, processor_def.ready_texture_path)
+
+static func get_animal_level_texture(animal_type: String, level: int) -> String:
+	var animal_def: AnimalDefinition = get_animal_def(animal_type)
+	if animal_def == null:
+		return ""
+	return _get_level_texture(animal_def.level_textures, level, animal_def.icon_path)
 
 static func get_animal_def(animal_type: String) -> AnimalDefinition:
 	_ensure_resource_maps()
@@ -200,6 +248,70 @@ static func get_animal_defs_for_pen(pen_blueprint_type: String) -> Array:
 		if animal_def.pen_blueprint_type == pen_blueprint_type:
 			result.append(animal_def)
 	return result
+
+static func get_worker_mode_options() -> Array[Dictionary]:
+	return [
+		{"id": WORK_MODE_AUTO, "label": "Auto"},
+		{"id": WORK_MODE_ASSIGNED, "label": "Assigned"},
+	]
+
+static func get_worker_role_options() -> Array[Dictionary]:
+	return [
+		{"id": WORKER_ROLE_CROP_CARE, "label": "Crop Care"},
+		{"id": WORKER_ROLE_PROCESSOR_DELIVERY, "label": "Processor Delivery"},
+		{"id": WORKER_ROLE_PROCESSOR_COLLECT, "label": "Processor Collect"},
+		{"id": WORKER_ROLE_ANIMAL_CARE, "label": "Animal Care"},
+		{"id": WORKER_ROLE_GENERAL_DELIVERY, "label": "General Delivery"},
+	]
+
+static func get_worker_role_label(role_id: String) -> String:
+	for option in get_worker_role_options():
+		if String(option.get("id", "")) == role_id:
+			return String(option.get("label", role_id))
+	return role_id
+
+static func get_worker_target_options(role_id: String) -> Array[Dictionary]:
+	_ensure_resource_maps()
+	var options: Array[Dictionary] = [{"id": "", "label": "Any"}]
+	match role_id:
+		WORKER_ROLE_CROP_CARE:
+			var crop_ids: Array[String] = []
+			for blueprint_id in get_blueprint_order():
+				var blueprint_def = get_blueprint_def(blueprint_id)
+				if blueprint_def != null and blueprint_def.placement_type == "CROP" and blueprint_def.crop_type != "" and not crop_ids.has(blueprint_def.crop_type):
+					crop_ids.append(blueprint_def.crop_type)
+			crop_ids.sort()
+			for crop_id in crop_ids:
+				var item_def = get_item_def(crop_id)
+				options.append({"id": crop_id, "label": item_def.label if item_def != null else crop_id})
+		WORKER_ROLE_PROCESSOR_DELIVERY, WORKER_ROLE_PROCESSOR_COLLECT:
+			for processor_id in _sort_ids_with_preferred(_processor_defs_by_id.keys(), PREFERRED_PROCESSOR_ORDER):
+				var processor_def = get_processor_def(processor_id)
+				options.append({"id": processor_id, "label": processor_def.label if processor_def != null else processor_id})
+		WORKER_ROLE_ANIMAL_CARE:
+			for animal_id in get_shop_animal_order():
+				var animal_def = get_animal_def(animal_id)
+				options.append({"id": animal_id, "label": animal_def.label if animal_def != null else animal_id})
+		_:
+			pass
+	return options
+
+static func get_worker_target_label(role_id: String, target_id: String) -> String:
+	if target_id == "":
+		return "Any"
+
+	match role_id:
+		WORKER_ROLE_CROP_CARE:
+			var item_def = get_item_def(target_id)
+			return item_def.label if item_def != null else target_id
+		WORKER_ROLE_PROCESSOR_DELIVERY, WORKER_ROLE_PROCESSOR_COLLECT:
+			var processor_def = get_processor_def(target_id)
+			return processor_def.label if processor_def != null else target_id
+		WORKER_ROLE_ANIMAL_CARE:
+			var animal_def = get_animal_def(target_id)
+			return animal_def.label if animal_def != null else target_id
+		_:
+			return target_id
 
 static func get_blueprint_price(blueprint_type: String, bought_count: int) -> int:
 	var blueprint_def: BlueprintDefinition = get_blueprint_def(blueprint_type)
@@ -221,3 +333,4 @@ static func get_tile_upgrade_price(is_processor: bool, level: int) -> int:
 	if is_processor:
 		base = 50
 	return int(floor(base * pow(2.0, level - 1)))
+

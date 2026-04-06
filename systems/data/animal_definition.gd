@@ -16,3 +16,4 @@ class_name AnimalDefinition
 @export var move_speed: float = 30.0
 @export var sprite_scale: float = 0.5
 @export var wander_padding: float = 10.0
+@export var level_textures: Array[String] = []
