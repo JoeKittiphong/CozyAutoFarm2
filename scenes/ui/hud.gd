@@ -32,11 +32,11 @@ var _selected_worker: FarmWorker = null
 @onready var _worker_manage_apply_btn: Button = $SidePanels/WorkerManagePanel/Content/ApplyButton
 @onready var _worker_manage_reset_btn: Button = $SidePanels/WorkerManagePanel/Content/ResetButton
 @onready var _sell_list: GameActionListComponent = $SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent/SellList
+@onready var _seed_blueprint_list: GameActionListComponent = $SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent/SeedBlueprintList
+@onready var _building_blueprint_list: GameActionListComponent = $SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent/BuildingBlueprintList
 @onready var _animal_list: GameActionListComponent = $SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent/AnimalList
-@onready var _blueprint_list: GameActionListComponent = $SidePanels/WorkerPanel/Content/ScrollContainer/BlueprintList
 @onready var hire_worker_btn: Button = $SidePanels/WorkerPanel/Content/HireButton
 @onready var upgrade_house_btn: Button = $SidePanels/WorkerPanel/Content/UpgradeHouseButton
-@onready var stock_info_label: Label = $SidePanels/WorkerPanel/Content/StockLabel
 @onready var upgrade_info_label: Label = $SidePanels/UpgradePanel/Content/InfoLabel
 @onready var upgrade_btn: Button = $SidePanels/UpgradePanel/Content/ActionUpgradeButton
 @onready var _shop_close_btn: Button = $SidePanels/ShopPanel/Content/CloseButton
@@ -62,8 +62,9 @@ func _ready() -> void:
 	_worker_close_btn.pressed.connect(_close_worker_panel)
 	_upgrade_close_btn.pressed.connect(_close_upgrade_panel)
 	_sell_list.action_selected.connect(_sell_item)
+	_seed_blueprint_list.action_selected.connect(_buy_blueprint)
+	_building_blueprint_list.action_selected.connect(_buy_blueprint)
 	_animal_list.action_selected.connect(_on_buy_animal_pressed)
-	_blueprint_list.action_selected.connect(_buy_blueprint)
 
 	_setup_top_bar()
 	_setup_dynamic_lists()
@@ -86,11 +87,14 @@ func _setup_top_bar() -> void:
 func _setup_dynamic_lists() -> void:
 	_warehouse_resource_list.repopulate()
 	_sell_list.repopulate()
+	_seed_blueprint_list.repopulate()
+	_building_blueprint_list.repopulate()
 	_animal_list.repopulate()
-	_blueprint_list.repopulate()
 	sell_buttons = _sell_list.get_buttons()
 	animal_buttons = _animal_list.get_buttons()
-	blueprint_buttons = _blueprint_list.get_buttons()
+	blueprint_buttons = {}
+	blueprint_buttons.merge(_seed_blueprint_list.get_buttons(), true)
+	blueprint_buttons.merge(_building_blueprint_list.get_buttons(), true)
 
 func _setup_worker_management_controls() -> void:
 	_populate_option_button(_worker_manage_mode, GameData.get_worker_mode_options(), GameData.WORK_MODE_AUTO)
@@ -364,7 +368,7 @@ func _buy_blueprint(blueprint_type: String) -> void:
 	InventoryManager.buy_blueprint(blueprint_type)
 
 func _on_buy_animal_pressed(animal_type: String) -> void:
-	var animal_def = GameData.get_animal_def(animal_type)
+	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 	if animal_def == null:
 		return
 	if _world == null:
@@ -400,7 +404,7 @@ func _on_resources_updated() -> void:
 
 	for item_type in sell_buttons.keys():
 		var sell_button: Button = sell_buttons[item_type]
-		var item_def = GameData.get_item_def(item_type)
+		var item_def: ItemDefinition = GameData.get_item_def(item_type)
 		var sell_label: String = item_type
 		var sell_price: int = 0
 		if item_def != null:
@@ -411,13 +415,11 @@ func _on_resources_updated() -> void:
 
 	for blueprint_type in blueprint_buttons.keys():
 		var blueprint_button: Button = blueprint_buttons[blueprint_type]
-		var blueprint_def = GameData.get_blueprint_def(blueprint_type)
+		var blueprint_def: BlueprintDefinition = GameData.get_blueprint_def(blueprint_type)
 		var blueprint_label: String = blueprint_type
 		if blueprint_def != null:
 			blueprint_label = blueprint_def.label
 		blueprint_button.text = "%s (-%d Coins)" % [blueprint_label, InventoryManager.get_blueprint_price(blueprint_type)]
-
-	stock_info_label.text = "Stock: " + _get_blueprint_stock_summary(InventoryManager)
 
 	if worker_manage_panel.visible:
 		_refresh_worker_management_statuses()
@@ -426,13 +428,13 @@ func _on_resources_updated() -> void:
 		_world = get_node_or_null("/root/World")
 	for animal_type in animal_buttons.keys():
 		var animal_button: Button = animal_buttons[animal_type]
-		var animal_def = GameData.get_animal_def(animal_type)
+		var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 		if animal_def == null:
 			continue
 		var pen_type: String = animal_def.pen_blueprint_type
 		var price: int = animal_def.price
 		var label: String = animal_def.label
-		var pen_def = GameData.get_blueprint_def(pen_type)
+		var pen_def: BlueprintDefinition = GameData.get_blueprint_def(pen_type)
 		var pen_label: String = pen_type
 		if pen_def != null:
 			pen_label = pen_def.label
@@ -443,16 +445,6 @@ func _on_resources_updated() -> void:
 			animal_button.text = "Buy %s (Need %s!)" % [label, pen_label]
 			animal_button.disabled = true
 
-func _get_blueprint_stock_summary(inv) -> String:
-	var parts: Array[String] = []
-	for blueprint_type in GameData.get_blueprint_order():
-		var blueprint_def = GameData.get_blueprint_def(blueprint_type)
-		var stock_short: String = blueprint_type.left(1)
-		if blueprint_def != null and blueprint_def.stock_short != "":
-			stock_short = blueprint_def.stock_short
-		parts.append("%d %s" % [inv.get_blueprint_stock(blueprint_type), stock_short])
-	return " | ".join(parts)
-
 func _update_upgrade_panel_info() -> void:
 	var lvl: int = FarmManager.get_tile_level(current_upgrade_cell)
 	var type_str: String = "Plot"
@@ -460,7 +452,7 @@ func _update_upgrade_panel_info() -> void:
 
 	var real_state = FarmManager.get_tile_state(current_upgrade_cell)
 	if real_state == FarmManager.TileState.PROCESSOR:
-		var processor_def = GameData.get_processor_def(FarmManager.get_processor_type(current_upgrade_cell))
+		var processor_def: ProcessorDefinition = GameData.get_processor_def(FarmManager.get_processor_type(current_upgrade_cell))
 		if processor_def != null:
 			type_str = processor_def.label
 		effect_str = "Efficiency: %d%% -> %d%%" % [int(pow(1.5, lvl - 1) * 100), int(pow(1.5, lvl) * 100)]

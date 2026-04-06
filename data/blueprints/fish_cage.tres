@@ -4,12 +4,13 @@
 
 [resource]
 script = ExtResource("1")
-blueprint_id = "COOP"
-label = "Chicken Coop"
-stock_short = "C"
-base_price = 15.0
-growth = 1.15
-placement_type = "BUILDING"
+blueprint_id = "FISH_CAGE"
+label = "Fish Cage"
+stock_short = "FC"
+base_price = 30.0
+growth = 1.25
+placement_type = "PROCESSOR"
+placement_surface = "WATER"
 shop_category = "SHOP"
-tile_type = "COOP"
+processor_type = "FISH_CAGE"
 texture_path = "res://assets/sprites/chicken_coop.png"

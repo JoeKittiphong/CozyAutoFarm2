@@ -28,3 +28,11 @@ func repopulate() -> void:
 		resource_item.configure(icon_path, "")
 		resource_item.bind_item(item_type)
 		add_child(resource_item)
+
+	# เพิ่มการแสดงแต้มอาหารสะสม (Feed Points) ท้ายรายการ
+	var pts: int = InventoryManager.get_animal_feed_points()
+	if pts > 0 or not show_only_owned:
+		var pts_item := ResourceItemScene.instantiate()
+		pts_item.configure("res://assets/sprites/animal_feed_bag.png", "Feed Points: %d" % pts)
+		pts_item.modulate = Color(0.8, 1.0, 0.8) # สีเขียวสะดุดตาเพื่อให้แยกจากไอเทมปกติ
+		add_child(pts_item)

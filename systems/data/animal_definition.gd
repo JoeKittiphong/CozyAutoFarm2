@@ -10,6 +10,7 @@ class_name AnimalDefinition
 @export var group_name: String = ""
 @export var feed_item_id: String = ""
 @export var feed_amount: int = 1
+@export var premium_feed_points: int = 1
 @export var product_item_id: String = ""
 @export var produce_time: float = 10.0
 @export var ready_state_name: String = "READY"

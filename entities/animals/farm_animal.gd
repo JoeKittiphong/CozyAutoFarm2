@@ -1,7 +1,6 @@
 extends Node2D
 class_name FarmAnimal
 
-
 const TILE_SIZE = 128
 
 @export var animal_type: String = ""
@@ -15,13 +14,14 @@ var has_requested_collect: bool = false
 
 @onready var sprite: Sprite2D = Sprite2D.new()
 @onready var _job_manager: Node = get_node("/root/JobManager")
+@onready var _inventory_manager: Node = get_node("/root/InventoryManager")
 
 func _ready() -> void:
 	add_child(sprite)
 	_apply_definition()
 
 func _process(delta: float) -> void:
-	var animal_def = GameData.get_animal_def(animal_type)
+	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 	if animal_def == null:
 		return
 
@@ -30,12 +30,7 @@ func _process(delta: float) -> void:
 
 	if state == GameData.STATE_HUNGRY:
 		if not has_requested_feed:
-			if _job_manager:
-				_job_manager.add_job(GameData.JOB_FEED_ANIMAL, home_pos, {
-					"item_type": animal_def.feed_item_id,
-					"amount": animal_def.feed_amount,
-					"group_name": animal_def.group_name,
-				})
+			_request_feed_job(animal_def)
 			has_requested_feed = true
 		_wander(delta, animal_def)
 		return
@@ -64,7 +59,7 @@ func setup(grid_pos: Vector2i) -> void:
 	_pick_new_wander_target(GameData.get_animal_def(animal_type))
 
 func feed() -> void:
-	var animal_def = GameData.get_animal_def(animal_type)
+	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 	if animal_def == null:
 		return
 	if state == GameData.STATE_HUNGRY:
@@ -73,14 +68,30 @@ func feed() -> void:
 		has_requested_feed = false
 
 func collect_product() -> void:
-	var animal_def = GameData.get_animal_def(animal_type)
+	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 	if animal_def == null:
 		return
 	if state == animal_def.ready_state_name:
 		state = GameData.STATE_HUNGRY
 		has_requested_collect = false
 
-func _wander(delta: float, animal_def) -> void:
+func _request_feed_job(animal_def: AnimalDefinition) -> void:
+	if _job_manager == null:
+		return
+
+	var use_premium_feed: bool = _inventory_manager != null and _inventory_manager.get_item_stock(GameData.ITEM_ANIMAL_FEED) > 0
+	var requested_item: String = GameData.ITEM_ANIMAL_FEED if use_premium_feed else animal_def.feed_item_id
+	var requested_amount: int = 1 if use_premium_feed else animal_def.feed_amount
+	_job_manager.add_job(GameData.JOB_FEED_ANIMAL, home_pos, {
+		"item_type": requested_item,
+		"amount": requested_amount,
+		"group_name": animal_def.group_name,
+		"fallback_item_type": animal_def.feed_item_id,
+		"fallback_amount": animal_def.feed_amount,
+		"feed_points": animal_def.premium_feed_points,
+	})
+
+func _wander(delta: float, animal_def: AnimalDefinition) -> void:
 	var dir = (target_wander - position).normalized()
 	var dist = position.distance_to(target_wander)
 	if dist < 5.0:
@@ -88,7 +99,7 @@ func _wander(delta: float, animal_def) -> void:
 	else:
 		position += dir * animal_def.move_speed * delta
 
-func _pick_new_wander_target(animal_def) -> void:
+func _pick_new_wander_target(animal_def: AnimalDefinition) -> void:
 	if animal_def == null:
 		return
 	var world_home = Vector2(home_pos) * TILE_SIZE
@@ -96,7 +107,7 @@ func _pick_new_wander_target(animal_def) -> void:
 	target_wander = world_home + Vector2(randf_range(padding, TILE_SIZE - padding), randf_range(padding, TILE_SIZE - padding))
 
 func _apply_definition() -> void:
-	var animal_def = GameData.get_animal_def(animal_type)
+	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 	if animal_def == null:
 		return
 
@@ -111,13 +122,14 @@ func _apply_definition() -> void:
 	sprite.position = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 
 func update_visual(level: int) -> void:
-	var animal_def = GameData.get_animal_def(animal_type)
+	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 	if animal_def == null:
 		return
-	
+
 	var tex_path: String = GameData.get_animal_level_texture(animal_type, level)
 	var tex = ResourceLoader.load(tex_path)
 	if tex:
 		sprite.texture = tex
 		var t_size = tex.get_size()
 		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y) * animal_def.sprite_scale
+

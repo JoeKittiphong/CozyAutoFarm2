@@ -1,11 +1,35 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://drgywq4jyb853"]
 
-[ext_resource type="Script" path="res://scenes/ui/hud.gd" id="1_hud"]
-[ext_resource type="Script" path="res://scenes/ui/components/game_action_list.gd" id="2_list"]
-[ext_resource type="Script" path="res://scenes/ui/components/game_resource_list.gd" id="3_reslist"]
+[ext_resource type="Script" uid="uid://d38rgtfcw3vrd" path="res://scenes/ui/hud.gd" id="1_hud"]
+[ext_resource type="Script" uid="uid://cb00tu51fdouu" path="res://scenes/ui/components/game_action_list.gd" id="2_list"]
+[ext_resource type="Script" uid="uid://bsqqaqq4i3283" path="res://scenes/ui/components/game_resource_list.gd" id="3_reslist"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top"]
 bg_color = Color(0.15, 0.1, 0.1, 0.9)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_warehouse"]
+bg_color = Color(0.08, 0.12, 0.18, 0.96)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.55, 0.78, 0.9, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_manage"]
+bg_color = Color(0.14, 0.12, 0.2, 0.96)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.8, 0.7, 0.95, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_shop"]
 bg_color = Color(0.2, 0.15, 0.1, 0.95)
@@ -37,284 +61,321 @@ border_color = Color(0.2, 0.9, 0.5, 1)
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_warehouse"]
-bg_color = Color(0.08, 0.12, 0.18, 0.96)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(0.55, 0.78, 0.9, 1)
-corner_radius_bottom_left = 10
-corner_radius_bottom_right = 10
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_manage"]
-bg_color = Color(0.14, 0.12, 0.2, 0.96)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(0.8, 0.7, 0.95, 1)
-corner_radius_bottom_left = 10
-corner_radius_bottom_right = 10
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-
-[node name="HUD" type="CanvasLayer"]
+[node name="HUD" type="CanvasLayer" unique_id=9692962]
 script = ExtResource("1_hud")
 
-[node name="TopBar" type="PanelContainer" parent="."]
+[node name="TopBar" type="PanelContainer" parent="." unique_id=1328202237]
 anchors_preset = 10
 anchor_right = 1.0
 offset_bottom = 40.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_top")
 
-[node name="BarContent" type="HBoxContainer" parent="TopBar"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 4.0
-offset_right = -12.0
-offset_bottom = -4.0
+[node name="BarContent" type="HBoxContainer" parent="TopBar" unique_id=1180908881]
+layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="ResourcesContainer" type="HBoxContainer" parent="TopBar/BarContent"]
+[node name="ResourcesContainer" type="HBoxContainer" parent="TopBar/BarContent" unique_id=2054812772]
+layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Spacer" type="Control" parent="TopBar/BarContent"]
+[node name="Spacer" type="Control" parent="TopBar/BarContent" unique_id=245564023]
+layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="WarehouseButton" type="Button" parent="TopBar/BarContent"]
+[node name="WarehouseButton" type="Button" parent="TopBar/BarContent" unique_id=211653424]
 custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
 text = "Warehouse"
 
-[node name="WorkersButton" type="Button" parent="TopBar/BarContent"]
+[node name="WorkersButton" type="Button" parent="TopBar/BarContent" unique_id=1104079984]
 custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
 text = "Workers"
 
-[node name="MillButton" type="Button" parent="TopBar/BarContent"]
+[node name="MillButton" type="Button" parent="TopBar/BarContent" unique_id=1256858844]
 custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
 text = "Mill: ON"
 
-[node name="SidePanels" type="Control" parent="."]
+[node name="SidePanels" type="Control" parent="." unique_id=1188364625]
+layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = 40.0
 mouse_filter = 2
 
-[node name="WarehousePanel" type="PanelContainer" parent="SidePanels"]
+[node name="WarehousePanel" type="PanelContainer" parent="SidePanels" unique_id=2085611386]
 visible = false
+layout_mode = 1
+anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -360.0
-offset_right = -10.0
 offset_top = 10.0
-offset_bottom = 560.0
+offset_right = -10.0
+offset_bottom = 984.0
+grow_horizontal = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
 
-[node name="Content" type="VBoxContainer" parent="SidePanels/WarehousePanel"]
+[node name="Content" type="VBoxContainer" parent="SidePanels/WarehousePanel" unique_id=485409843]
+layout_mode = 2
 theme_override_constants/separation = 15
 
-[node name="TopSpacer" type="Control" parent="SidePanels/WarehousePanel/Content"]
+[node name="TopSpacer" type="Control" parent="SidePanels/WarehousePanel/Content" unique_id=637183937]
 custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
 
-[node name="Title" type="Label" parent="SidePanels/WarehousePanel/Content"]
+[node name="Title" type="Label" parent="SidePanels/WarehousePanel/Content" unique_id=1935788328]
+layout_mode = 2
 text = "--- WAREHOUSE ---"
 horizontal_alignment = 1
 
-[node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/WarehousePanel/Content"]
+[node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/WarehousePanel/Content" unique_id=2090072160]
 custom_minimum_size = Vector2(0, 430)
+layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ResourceList" type="VBoxContainer" parent="SidePanels/WarehousePanel/Content/ScrollContainer"]
-script = ExtResource("3_reslist")
-show_only_owned = true
+[node name="ResourceList" type="VBoxContainer" parent="SidePanels/WarehousePanel/Content/ScrollContainer" unique_id=1632860723]
+layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
+script = ExtResource("3_reslist")
 
-[node name="CloseButton" type="Button" parent="SidePanels/WarehousePanel/Content"]
+[node name="CloseButton" type="Button" parent="SidePanels/WarehousePanel/Content" unique_id=1062904547]
+layout_mode = 2
 text = "Close"
 
-[node name="WorkerManagePanel" type="PanelContainer" parent="SidePanels"]
+[node name="WorkerManagePanel" type="PanelContainer" parent="SidePanels" unique_id=1634639479]
 visible = false
+layout_mode = 0
 anchor_left = 1.0
 anchor_right = 1.0
 offset_left = -430.0
-offset_right = -10.0
 offset_top = 10.0
+offset_right = -10.0
 offset_bottom = 700.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_manage")
 
-[node name="Content" type="VBoxContainer" parent="SidePanels/WorkerManagePanel"]
+[node name="Content" type="VBoxContainer" parent="SidePanels/WorkerManagePanel" unique_id=478511937]
+layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="TopSpacer" type="Control" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="TopSpacer" type="Control" parent="SidePanels/WorkerManagePanel/Content" unique_id=391106684]
 custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
 
-[node name="Title" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="Title" type="Label" parent="SidePanels/WorkerManagePanel/Content" unique_id=763562296]
+layout_mode = 2
 text = "--- WORKER MANAGEMENT ---"
 horizontal_alignment = 1
 
-[node name="InfoLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="InfoLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content" unique_id=1676956656]
+layout_mode = 2
 text = "Select a worker and assign a focus."
 horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="WorkerScroll" type="ScrollContainer" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="WorkerScroll" type="ScrollContainer" parent="SidePanels/WorkerManagePanel/Content" unique_id=1946156383]
 custom_minimum_size = Vector2(0, 260)
+layout_mode = 2
 size_flags_vertical = 3
 
-[node name="WorkerList" type="VBoxContainer" parent="SidePanels/WorkerManagePanel/Content/WorkerScroll"]
+[node name="WorkerList" type="VBoxContainer" parent="SidePanels/WorkerManagePanel/Content/WorkerScroll" unique_id=681609425]
+layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="SelectedWorkerLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="SelectedWorkerLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content" unique_id=1331483966]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 0.9, 1, 1)
 text = "No worker selected"
 horizontal_alignment = 1
 
-theme_override_colors/font_color = Color(0.9, 0.9, 1, 1)
-
-[node name="ModeLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="ModeLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content" unique_id=1856606592]
+layout_mode = 2
 text = "Mode"
 
-[node name="ModeOption" type="OptionButton" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="ModeOption" type="OptionButton" parent="SidePanels/WorkerManagePanel/Content" unique_id=1292147616]
+layout_mode = 2
 
-[node name="RoleLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="RoleLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content" unique_id=998426866]
+layout_mode = 2
 text = "Role"
 
-[node name="RoleOption" type="OptionButton" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="RoleOption" type="OptionButton" parent="SidePanels/WorkerManagePanel/Content" unique_id=526020834]
+layout_mode = 2
 
-[node name="TargetLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="TargetLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content" unique_id=998843629]
+layout_mode = 2
 text = "Target"
 
-[node name="TargetOption" type="OptionButton" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="TargetOption" type="OptionButton" parent="SidePanels/WorkerManagePanel/Content" unique_id=398018272]
+layout_mode = 2
 
-[node name="FallbackCheck" type="CheckButton" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="FallbackCheck" type="CheckButton" parent="SidePanels/WorkerManagePanel/Content" unique_id=946953959]
+layout_mode = 2
 button_pressed = true
 text = "Help When Idle"
 
-[node name="ApplyButton" type="Button" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="ApplyButton" type="Button" parent="SidePanels/WorkerManagePanel/Content" unique_id=1058895894]
+layout_mode = 2
 text = "Apply Assignment"
 
-[node name="ResetButton" type="Button" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="ResetButton" type="Button" parent="SidePanels/WorkerManagePanel/Content" unique_id=1424931047]
+layout_mode = 2
 text = "Return To Auto"
 
-[node name="CloseButton" type="Button" parent="SidePanels/WorkerManagePanel/Content"]
+[node name="CloseButton" type="Button" parent="SidePanels/WorkerManagePanel/Content" unique_id=836314296]
+layout_mode = 2
 text = "Close"
 
-[node name="ShopPanel" type="PanelContainer" parent="SidePanels"]
+[node name="ShopPanel" type="PanelContainer" parent="SidePanels" unique_id=1981396575]
 visible = false
 custom_minimum_size = Vector2(350, 0)
+layout_mode = 0
 offset_right = 350.0
-offset_bottom = 680.0
+offset_bottom = 996.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_shop")
 
-[node name="Content" type="VBoxContainer" parent="SidePanels/ShopPanel"]
+[node name="Content" type="VBoxContainer" parent="SidePanels/ShopPanel" unique_id=989466707]
+layout_mode = 2
 theme_override_constants/separation = 15
 
-[node name="TopSpacer" type="Control" parent="SidePanels/ShopPanel/Content"]
+[node name="TopSpacer" type="Control" parent="SidePanels/ShopPanel/Content" unique_id=2048720234]
 custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
 
-[node name="Title" type="Label" parent="SidePanels/ShopPanel/Content"]
+[node name="Title" type="Label" parent="SidePanels/ShopPanel/Content" unique_id=1649381163]
+layout_mode = 2
 text = "--- SHOP ---"
 horizontal_alignment = 1
 
-[node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/ShopPanel/Content"]
+[node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/ShopPanel/Content" unique_id=1250104529]
 custom_minimum_size = Vector2(0, 520)
+layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ScrollContent" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer"]
+[node name="ScrollContent" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer" unique_id=1726410689]
+layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
-[node name="SellList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent"]
+[node name="SellList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1053949515]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
 script = ExtResource("2_list")
-list_kind = "sellable_items"
+
+[node name="SeedTitle" type="Label" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1109445008]
+layout_mode = 2
+text = "--- SEEDS & PLOTS ---"
+horizontal_alignment = 1
+
+[node name="SeedBlueprintList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1290336993]
+layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
+script = ExtResource("2_list")
+list_kind = "blueprints"
+blueprint_shop_category = "SHOP"
+blueprint_placement_filters = PackedStringArray("CROP")
 
-[node name="AnimalList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent"]
+[node name="BuildingTitle" type="Label" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1512756428]
+layout_mode = 2
+text = "--- BUILDINGS ---"
+horizontal_alignment = 1
+
+[node name="BuildingBlueprintList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1540336993]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+script = ExtResource("2_list")
+list_kind = "blueprints"
+blueprint_shop_category = "SHOP"
+blueprint_placement_filters = PackedStringArray("BUILDING", "PROCESSOR")
+
+[node name="AnimalTitle" type="Label" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=2112756428]
+layout_mode = 2
+text = "--- ANIMALS ---"
+horizontal_alignment = 1
+
+[node name="AnimalList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1548645490]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
 script = ExtResource("2_list")
 list_kind = "shop_animals"
-size_flags_horizontal = 3
-theme_override_constants/separation = 10
 
-[node name="CloseButton" type="Button" parent="SidePanels/ShopPanel/Content"]
+[node name="CloseButton" type="Button" parent="SidePanels/ShopPanel/Content" unique_id=1009277480]
+layout_mode = 2
 text = "Close"
 
-[node name="WorkerPanel" type="PanelContainer" parent="SidePanels"]
+[node name="WorkerPanel" type="PanelContainer" parent="SidePanels" unique_id=1169618094]
 visible = false
 custom_minimum_size = Vector2(350, 0)
+layout_mode = 0
 offset_right = 350.0
-offset_bottom = 680.0
+offset_bottom = 280.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_worker")
 
-[node name="Content" type="VBoxContainer" parent="SidePanels/WorkerPanel"]
+[node name="Content" type="VBoxContainer" parent="SidePanels/WorkerPanel" unique_id=739012301]
+layout_mode = 2
 theme_override_constants/separation = 15
 
-[node name="TopSpacer" type="Control" parent="SidePanels/WorkerPanel/Content"]
+[node name="TopSpacer" type="Control" parent="SidePanels/WorkerPanel/Content" unique_id=1238900347]
 custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
 
-[node name="Title" type="Label" parent="SidePanels/WorkerPanel/Content"]
+[node name="Title" type="Label" parent="SidePanels/WorkerPanel/Content" unique_id=1945723554]
+layout_mode = 2
 text = "--- WORKER HOUSE ---"
 horizontal_alignment = 1
 
-[node name="HireButton" type="Button" parent="SidePanels/WorkerPanel/Content"]
+[node name="HireButton" type="Button" parent="SidePanels/WorkerPanel/Content" unique_id=986354705]
+layout_mode = 2
 text = "Hire Worker"
 
-[node name="UpgradeHouseButton" type="Button" parent="SidePanels/WorkerPanel/Content"]
+[node name="UpgradeHouseButton" type="Button" parent="SidePanels/WorkerPanel/Content" unique_id=2019028063]
+layout_mode = 2
 text = "Upgrade House"
 
-[node name="BlueprintTitle" type="Label" parent="SidePanels/WorkerPanel/Content"]
-text = "--- BUY BLUEPRINTS ---"
-horizontal_alignment = 1
-
-[node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/WorkerPanel/Content"]
-custom_minimum_size = Vector2(0, 420)
-size_flags_vertical = 3
-
-[node name="BlueprintList" type="VBoxContainer" parent="SidePanels/WorkerPanel/Content/ScrollContainer"]
-script = ExtResource("2_list")
-list_kind = "blueprints"
-size_flags_horizontal = 3
-theme_override_constants/separation = 10
-
-[node name="StockLabel" type="Label" parent="SidePanels/WorkerPanel/Content"]
-text = "Stock:"
-horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.6, 0.9, 0.6, 1)
-
-[node name="CloseButton" type="Button" parent="SidePanels/WorkerPanel/Content"]
+[node name="CloseButton" type="Button" parent="SidePanels/WorkerPanel/Content" unique_id=1219478543]
+layout_mode = 2
 text = "Close"
 
-[node name="UpgradePanel" type="PanelContainer" parent="SidePanels"]
+[node name="UpgradePanel" type="PanelContainer" parent="SidePanels" unique_id=169270898]
 visible = false
 custom_minimum_size = Vector2(350, 0)
+layout_mode = 0
 offset_right = 350.0
-offset_bottom = 400.0
+offset_bottom = 257.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_upgrade")
 
-[node name="Content" type="VBoxContainer" parent="SidePanels/UpgradePanel"]
+[node name="Content" type="VBoxContainer" parent="SidePanels/UpgradePanel" unique_id=896384049]
+layout_mode = 2
 theme_override_constants/separation = 15
 
-[node name="TopSpacer" type="Control" parent="SidePanels/UpgradePanel/Content"]
+[node name="TopSpacer" type="Control" parent="SidePanels/UpgradePanel/Content" unique_id=521659824]
 custom_minimum_size = Vector2(0, 20)
+layout_mode = 2
 
-[node name="Title" type="Label" parent="SidePanels/UpgradePanel/Content"]
+[node name="Title" type="Label" parent="SidePanels/UpgradePanel/Content" unique_id=2083948146]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 1, 0.6, 1)
 text = "--- UPGRADE ---"
 horizontal_alignment = 1
-theme_override_colors/font_color = Color(0.4, 1.0, 0.6, 1)
 
-[node name="InfoLabel" type="Label" parent="SidePanels/UpgradePanel/Content"]
+[node name="InfoLabel" type="Label" parent="SidePanels/UpgradePanel/Content" unique_id=1109965525]
+layout_mode = 2
 horizontal_alignment = 1
 
-[node name="ActionUpgradeButton" type="Button" parent="SidePanels/UpgradePanel/Content"]
+[node name="ActionUpgradeButton" type="Button" parent="SidePanels/UpgradePanel/Content" unique_id=39943061]
 custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
 text = "Upgrade"
 
-[node name="CloseButton" type="Button" parent="SidePanels/UpgradePanel/Content"]
+[node name="CloseButton" type="Button" parent="SidePanels/UpgradePanel/Content" unique_id=955678531]
 custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
 text = "Close"

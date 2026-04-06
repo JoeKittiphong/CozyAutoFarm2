@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ItemDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/item_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+item_id = "ANIMAL_FEED"
+label = "Animal Feed Bag"
+icon_path = "res://assets/sprites/animal_feed_bag.png"
+sell_price = 50
+buy_price = 100
+is_factory_product = true

@@ -13,6 +13,7 @@ script_path = "res://entities/animals/farm_animal.gd"
 group_name = "chickens"
 feed_item_id = "FLOUR"
 feed_amount = 1
+premium_feed_points = 1
 product_item_id = "EGG"
 produce_time = 10.0
 ready_state_name = "EGG_READY"

@@ -13,6 +13,7 @@ script_path = "res://entities/animals/farm_animal.gd"
 group_name = "cows"
 feed_item_id = "WHEAT"
 feed_amount = 3
+premium_feed_points = 2
 product_item_id = "MILK"
 produce_time = 15.0
 ready_state_name = "MILK_READY"

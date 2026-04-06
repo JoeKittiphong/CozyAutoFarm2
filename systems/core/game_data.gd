@@ -6,10 +6,15 @@ const PROCESSING_STORAGE_POS := Vector2i(2, -1)
 const SHOP_POS := Vector2i(-6, -1)
 const MAX_UPGRADE_LEVEL := 5
 
+const SHOP_CATEGORY_SHOP := "SHOP"
+const SHOP_CATEGORY_WORKER_HOUSE := "WORKER_HOUSE"
+
 const ITEM_WHEAT := "WHEAT"
 const ITEM_TOMATO := "TOMATO"
 const ITEM_POTATO := "POTATO"
 const ITEM_FLOUR := "FLOUR"
+const ITEM_ANIMAL_FEED := "ANIMAL_FEED"
+const ITEM_FISH := "FISH"
 const ITEM_EGG := "EGG"
 const ITEM_MILK := "MILK"
 const ITEM_CAKE := "CAKE"
@@ -23,10 +28,14 @@ const BLUEPRINT_COW_PEN := "COW_PEN"
 const BLUEPRINT_BAKERY := "BAKERY"
 const BLUEPRINT_MILL := "MILL"
 const BLUEPRINT_TOMATO_FACTORY := "TOMATO_FACTORY"
+const BLUEPRINT_FISH_CAGE := "FISH_CAGE"
+const BLUEPRINT_ANIMAL_FEED_FACTORY := "ANIMAL_FEED_FACTORY"
 
 const PROCESSOR_BAKERY := "BAKERY"
 const PROCESSOR_MILL := "MILL"
 const PROCESSOR_TOMATO_FACTORY := "TOMATO_FACTORY"
+const PROCESSOR_FISH_CAGE := "FISH_CAGE"
+const PROCESSOR_ANIMAL_FEED_FACTORY := "ANIMAL_FEED_FACTORY"
 
 const ANIMAL_CHICKEN := "CHICKEN"
 const ANIMAL_COW := "COW"
@@ -68,6 +77,8 @@ const PREFERRED_ITEM_ORDER := [
 	ITEM_TOMATO,
 	ITEM_POTATO,
 	ITEM_FLOUR,
+	ITEM_ANIMAL_FEED,
+	ITEM_FISH,
 	ITEM_EGG,
 	ITEM_MILK,
 	ITEM_CAKE,
@@ -82,9 +93,11 @@ const PREFERRED_BLUEPRINT_ORDER := [
 	BLUEPRINT_POTATO,
 	BLUEPRINT_MILL,
 	BLUEPRINT_TOMATO_FACTORY,
+	BLUEPRINT_ANIMAL_FEED_FACTORY,
+	BLUEPRINT_FISH_CAGE,
 ]
 const PREFERRED_ANIMAL_ORDER := [ANIMAL_CHICKEN, ANIMAL_COW]
-const PREFERRED_PROCESSOR_ORDER := [PROCESSOR_MILL, PROCESSOR_BAKERY, PROCESSOR_TOMATO_FACTORY]
+const PREFERRED_PROCESSOR_ORDER := [PROCESSOR_MILL, PROCESSOR_BAKERY, PROCESSOR_TOMATO_FACTORY, PROCESSOR_ANIMAL_FEED_FACTORY, PROCESSOR_FISH_CAGE]
 
 const CROP_VISUALS := {
 	"WHEAT": {"sprout": "res://assets/sprites/wheat_sprout.png", "ready": "res://assets/sprites/wheat_ready.png"},
@@ -184,6 +197,20 @@ static func get_blueprint_order() -> Array[String]:
 	_ensure_resource_maps()
 	return _blueprint_order.duplicate()
 
+static func get_blueprint_order_by_shop_category(shop_category: String) -> Array[String]:
+	_ensure_resource_maps()
+	if shop_category == "":
+		return get_blueprint_order()
+	var result: Array[String] = []
+	for blueprint_id in _blueprint_order:
+		var blueprint_def: BlueprintDefinition = get_blueprint_def(blueprint_id)
+		if blueprint_def == null:
+			continue
+		var current_category: String = blueprint_def.shop_category if blueprint_def.shop_category != "" else SHOP_CATEGORY_SHOP
+		if current_category == shop_category:
+			result.append(blueprint_id)
+	return result
+
 static func get_shop_animal_order() -> Array[String]:
 	_ensure_resource_maps()
 	return _shop_animal_order.duplicate()
@@ -277,20 +304,20 @@ static func get_worker_target_options(role_id: String) -> Array[Dictionary]:
 		WORKER_ROLE_CROP_CARE:
 			var crop_ids: Array[String] = []
 			for blueprint_id in get_blueprint_order():
-				var blueprint_def = get_blueprint_def(blueprint_id)
+				var blueprint_def: BlueprintDefinition = get_blueprint_def(blueprint_id)
 				if blueprint_def != null and blueprint_def.placement_type == "CROP" and blueprint_def.crop_type != "" and not crop_ids.has(blueprint_def.crop_type):
 					crop_ids.append(blueprint_def.crop_type)
 			crop_ids.sort()
 			for crop_id in crop_ids:
-				var item_def = get_item_def(crop_id)
+				var item_def: ItemDefinition = get_item_def(crop_id)
 				options.append({"id": crop_id, "label": item_def.label if item_def != null else crop_id})
 		WORKER_ROLE_PROCESSOR_DELIVERY, WORKER_ROLE_PROCESSOR_COLLECT:
 			for processor_id in _sort_ids_with_preferred(_processor_defs_by_id.keys(), PREFERRED_PROCESSOR_ORDER):
-				var processor_def = get_processor_def(processor_id)
+				var processor_def: ProcessorDefinition = get_processor_def(processor_id)
 				options.append({"id": processor_id, "label": processor_def.label if processor_def != null else processor_id})
 		WORKER_ROLE_ANIMAL_CARE:
 			for animal_id in get_shop_animal_order():
-				var animal_def = get_animal_def(animal_id)
+				var animal_def: AnimalDefinition = get_animal_def(animal_id)
 				options.append({"id": animal_id, "label": animal_def.label if animal_def != null else animal_id})
 		_:
 			pass
@@ -302,13 +329,13 @@ static func get_worker_target_label(role_id: String, target_id: String) -> Strin
 
 	match role_id:
 		WORKER_ROLE_CROP_CARE:
-			var item_def = get_item_def(target_id)
+			var item_def: ItemDefinition = get_item_def(target_id)
 			return item_def.label if item_def != null else target_id
 		WORKER_ROLE_PROCESSOR_DELIVERY, WORKER_ROLE_PROCESSOR_COLLECT:
-			var processor_def = get_processor_def(target_id)
+			var processor_def: ProcessorDefinition = get_processor_def(target_id)
 			return processor_def.label if processor_def != null else target_id
 		WORKER_ROLE_ANIMAL_CARE:
-			var animal_def = get_animal_def(target_id)
+			var animal_def: AnimalDefinition = get_animal_def(target_id)
 			return animal_def.label if animal_def != null else target_id
 		_:
 			return target_id
@@ -333,4 +360,3 @@ static func get_tile_upgrade_price(is_processor: bool, level: int) -> int:
 	if is_processor:
 		base = 50
 	return int(floor(base * pow(2.0, level - 1)))
-

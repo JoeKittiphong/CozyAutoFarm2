@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="ProcessorDefinition" load_steps=6 format=3]
+[gd_resource type="Resource" script_class="ProcessorDefinition" format=3 uid="uid://d2lq8623v5asi"]
 
-[ext_resource type="Script" path="res://systems/data/processor_definition.gd" id="1"]
-[ext_resource type="Script" path="res://systems/data/resource_amount_definition.gd" id="2"]
+[ext_resource type="Script" uid="uid://dpunfd4vat857" path="res://systems/data/processor_definition.gd" id="1"]
+[ext_resource type="Script" uid="uid://cy73og414c0tb" path="res://systems/data/resource_amount_definition.gd" id="2"]
 [ext_resource type="Resource" path="res://data/items/wheat.tres" id="3"]
 [ext_resource type="Resource" path="res://data/items/flour.tres" id="4"]
 
-[sub_resource type="Resource" id="1"]
+[sub_resource type="Resource" id="Resource_0o6t2"]
 script = ExtResource("2")
 item_def = ExtResource("3")
 amount = 3
@@ -13,7 +13,6 @@ amount = 3
 [sub_resource type="Resource" id="2"]
 script = ExtResource("2")
 item_def = ExtResource("4")
-amount = 1
 
 [resource]
 script = ExtResource("1")
@@ -24,5 +23,5 @@ ready_state_name = "FLOUR_READY"
 ready_texture_path = "res://assets/sprites/mill_building.png"
 deliver_storage_pos = Vector2i(-2, -1)
 collect_storage_pos = Vector2i(2, -1)
-inputs = [SubResource("1")]
+inputs = [SubResource("Resource_0o6t2")]
 outputs = [SubResource("2")]

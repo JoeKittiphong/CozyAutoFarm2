@@ -4,12 +4,11 @@
 
 [resource]
 script = ExtResource("1")
-blueprint_id = "COW_PEN"
-label = "Cow Pen"
-stock_short = "CP"
-base_price = 20.0
-growth = 1.2
-placement_type = "BUILDING"
+blueprint_id = "ANIMAL_FEED_FACTORY"
+label = "Feed Factory"
+price = 200
+placement_type = "PROCESSOR"
+processor_type = "ANIMAL_FEED_FACTORY"
+icon_path = "res://assets/sprites/feed_factory.png"
 shop_category = "SHOP"
-tile_type = "COW_PEN"
-texture_path = "res://assets/sprites/cow_pen.png"
+placement_surface = "LAND"

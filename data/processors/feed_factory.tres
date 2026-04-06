@@ -1,0 +1,39 @@
+[gd_resource type="Resource" script_class="ProcessorDefinition" format=3 uid="uid://ga165okfljby"]
+
+[ext_resource type="Script" uid="uid://dpunfd4vat857" path="res://systems/data/processor_definition.gd" id="1"]
+[ext_resource type="Resource" path="res://data/items/flour.tres" id="2"]
+[ext_resource type="Resource" path="res://data/items/wheat.tres" id="3"]
+[ext_resource type="Resource" path="res://data/items/potato.tres" id="4"]
+[ext_resource type="Resource" path="res://data/items/animal_feed.tres" id="5"]
+[ext_resource type="Script" uid="uid://cy73og414c0tb" path="res://systems/data/resource_amount_definition.gd" id="6"]
+
+[sub_resource type="Resource" id="Resource_flour"]
+script = ExtResource("6")
+item_def = ExtResource("2")
+amount = 2
+
+[sub_resource type="Resource" id="Resource_wheat"]
+script = ExtResource("6")
+item_def = ExtResource("3")
+amount = 5
+
+[sub_resource type="Resource" id="Resource_potato"]
+script = ExtResource("6")
+item_def = ExtResource("4")
+amount = 5
+
+[sub_resource type="Resource" id="Resource_output"]
+script = ExtResource("6")
+item_def = ExtResource("5")
+
+[resource]
+script = ExtResource("1")
+processor_type = "ANIMAL_FEED_FACTORY"
+label = "Animal Feed Factory"
+base_duration = 30.0
+ready_texture_path = "res://assets/sprites/feed_factory.png"
+ready_level_textures = Array[String](["res://assets/sprites/feed_factory.png"])
+idle_texture_path = "res://assets/sprites/feed_factory.png"
+level_textures = Array[String](["res://assets/sprites/feed_factory.png"])
+inputs = [SubResource("Resource_flour"), SubResource("Resource_wheat"), SubResource("Resource_potato")]
+outputs = [SubResource("Resource_output")]

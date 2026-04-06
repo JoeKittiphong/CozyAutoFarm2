@@ -163,7 +163,7 @@ func matches_job(job: Dictionary) -> bool:
 				return false
 			if assigned_target_id == "":
 				return true
-			var animal_def = GameData.get_animal_def(assigned_target_id)
+			var animal_def: AnimalDefinition = GameData.get_animal_def(assigned_target_id)
 			if animal_def == null:
 				return false
 			return String(job.get("group_name", animal_def.group_name)) == animal_def.group_name or String(job.get("animal_type", assigned_target_id)) == assigned_target_id
@@ -251,11 +251,24 @@ func _handle_feed_animal(item_type: String, amount: int, group_name: String) -> 
 			is_working = false
 			return
 
-		if not _inventory_manager.spend_item(item_type, amount):
-			_job_manager.add_job(String(current_job.get("type", "")), current_job.target_pos)
-			current_job.clear()
-			is_working = false
-			return
+		if item_type == GameData.ITEM_ANIMAL_FEED:
+			if not _inventory_manager.consume_animal_feed_points(int(current_job.get("feed_points", 1))):
+				if _try_swap_to_fallback_feed(item_type):
+					is_working = false
+					return
+				_requeue_feed_job(item_type, amount, group_name)
+				current_job.clear()
+				is_working = false
+				return
+		else:
+			if not _inventory_manager.spend_item(item_type, amount):
+				if _try_swap_to_fallback_feed(item_type):
+					is_working = false
+					return
+				_requeue_feed_job(item_type, amount, group_name)
+				current_job.clear()
+				is_working = false
+				return
 
 		_add_carried_item(item_type, amount)
 		current_path = _grid_manager.get_path_cells(grid_pos, current_job.target_pos)
@@ -270,6 +283,27 @@ func _handle_feed_animal(item_type: String, amount: int, group_name: String) -> 
 
 	current_job.clear()
 	is_working = false
+
+func _try_swap_to_fallback_feed(item_type: String) -> bool:
+	var fallback_item_type: String = String(current_job.get("fallback_item_type", ""))
+	var fallback_amount: int = int(current_job.get("fallback_amount", 1))
+	if item_type != GameData.ITEM_ANIMAL_FEED:
+		return false
+	if fallback_item_type == "" or fallback_item_type == item_type:
+		return false
+	current_job["item_type"] = fallback_item_type
+	current_job["amount"] = fallback_amount
+	current_path.clear()
+	return true
+
+func _requeue_feed_job(item_type: String, amount: int, group_name: String) -> void:
+	_job_manager.add_job(GameData.JOB_FEED_ANIMAL, current_job.target_pos, {
+		"item_type": item_type,
+		"amount": amount,
+		"group_name": group_name,
+		"fallback_item_type": String(current_job.get("fallback_item_type", "")),
+		"fallback_amount": int(current_job.get("fallback_amount", amount)),
+	})
 
 func _handle_collect_animal_product(item_type: String, group_name: String, collect_method: String) -> void:
 	if _get_carried_amount(item_type) < 1:
@@ -307,7 +341,7 @@ func _handle_fetch_animal() -> void:
 		_update_carried_visual()
 
 		var animal_type: String = String(current_job.get("animal_type", ""))
-		var animal_def = GameData.get_animal_def(animal_type)
+		var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 		if animal_def == null:
 			carried_animal.visible = true
 			carried_animal = null
@@ -443,12 +477,12 @@ func _update_carried_visual() -> void:
 	var count := 0
 	var carried_item := _get_primary_carried_item()
 	if carried_item != "":
-		var item_def = GameData.get_item_def(carried_item)
+		var item_def: ItemDefinition = GameData.get_item_def(carried_item)
 		tex_path = item_def.icon_path if item_def != null else ""
 		count = _get_carried_amount(carried_item)
 	elif carried_animal != null:
 		var animal_type: String = String(current_job.get("animal_type", GameData.ANIMAL_CHICKEN))
-		var animal_def = GameData.get_animal_def(animal_type)
+		var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 		tex_path = animal_def.icon_path if animal_def != null else ""
 		count = 1
 
@@ -482,3 +516,4 @@ func _complete_delivery() -> void:
 	carried_items.clear()
 	current_job.clear()
 	is_working = false
+

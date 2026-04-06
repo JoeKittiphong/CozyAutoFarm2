@@ -1,13 +1,15 @@
 extends Node
 class_name InventoryClass
 
-
 signal resources_updated
+
+const ANIMAL_FEED_POINTS_PER_BAG := 40
 
 var money: int = 100
 var mill_count: int = 0
 var house_level: int = 1
 var mill_paused: bool = false
+var animal_feed_points: int = 0
 
 var item_stock: Dictionary = {}
 var blueprint_stock: Dictionary = {}
@@ -42,6 +44,25 @@ func spend_item(item_type: String, amount: int) -> bool:
 	item_stock[item_type] = current - amount
 	resources_updated.emit()
 	return true
+
+func consume_animal_feed_points(points: int) -> bool:
+	if points <= 0:
+		return true
+
+	while animal_feed_points < points and get_item_stock(GameData.ITEM_ANIMAL_FEED) > 0:
+		item_stock[GameData.ITEM_ANIMAL_FEED] = get_item_stock(GameData.ITEM_ANIMAL_FEED) - 1
+		animal_feed_points += ANIMAL_FEED_POINTS_PER_BAG
+
+	if animal_feed_points < points:
+		resources_updated.emit()
+		return false
+
+	animal_feed_points -= points
+	resources_updated.emit()
+	return true
+
+func get_animal_feed_points() -> int:
+	return animal_feed_points
 
 func get_blueprint_stock(blueprint_type: String) -> int:
 	return int(blueprint_stock.get(blueprint_type, 0))

@@ -7,10 +7,12 @@ const GROUND_SOURCE_ID := 0
 const GROUND_ATLAS_COORDS := Vector2i.ZERO
 
 @onready var ground_layer: TileMapLayer = $GroundLayer
+@onready var water_layer: TileMapLayer = $WaterLayer
 @onready var obstacles_layer: TileMapLayer = $ObstaclesLayer
 @onready var plot_layer: Node2D = $PlotLayer
 @onready var pen_layer: Node2D = $PenLayer
 @onready var building_layer: Node2D = $BuildingLayer
+@onready var water_building_layer: Node2D = $WaterBuildingLayer
 @onready var actor_layer: Node2D = $ActorLayer
 @onready var highlight_rect: ColorRect = $HighlightRect
 @onready var house_marker: Marker2D = $HouseMarker
@@ -42,7 +44,7 @@ func _ensure_default_ground_tiles() -> void:
 			ground_layer.set_cell(Vector2i(x, y), GROUND_SOURCE_ID, GROUND_ATLAS_COORDS)
 
 func _scan_editor_map() -> void:
-	MapScannerClass.apply_layers_to_grid(ground_layer, obstacles_layer)
+	MapScannerClass.apply_layers_to_grid(ground_layer, water_layer, obstacles_layer)
 
 func _spawn_worker_system() -> void:
 	var house_pos: Vector2i = _marker_to_grid(house_marker)
@@ -68,11 +70,29 @@ func _unhandled_input(event: InputEvent) -> void:
 		var mouse_pos = get_global_mouse_position()
 		var grid_pos = _get_grid_position(mouse_pos)
 		highlight_rect.global_position = _grid_to_world_top_left(grid_pos)
+		_update_highlight_feedback(grid_pos)
 	elif event is InputEventMouseButton and event.pressed:
 		var mouse_pos = get_global_mouse_position()
 		var grid_pos = _get_grid_position(mouse_pos)
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_handle_left_click(grid_pos)
+
+func _update_highlight_feedback(grid_pos: Vector2i) -> void:
+	var blueprint_def = _get_first_available_blueprint_def()
+	if blueprint_def == null:
+		highlight_rect.color = Color(1, 1, 1, 0.3) # White (Idle)
+		return
+		
+	if _can_place_blueprint(grid_pos, blueprint_def):
+		highlight_rect.color = Color(0, 1, 0, 0.3) # Green (Valid)
+	else:
+		highlight_rect.color = Color(1, 0, 0, 0.3) # Red (Blocked)
+
+func _get_first_available_blueprint_def() -> BlueprintDefinition:
+	for blueprint_type in GameData.get_blueprint_order():
+		if _inventory_manager.get_blueprint_stock(blueprint_type) > 0:
+			return GameData.get_blueprint_def(blueprint_type)
+	return null
 
 func _get_grid_position(world_pos: Vector2) -> Vector2i:
 	var local_pos = ground_layer.to_local(world_pos)
@@ -94,6 +114,17 @@ func _is_house_interaction_cell(grid_pos: Vector2i) -> bool:
 func _is_shop_interaction_cell(grid_pos: Vector2i) -> bool:
 	return grid_pos == _marker_to_grid(shop_marker)
 
+func _can_place_blueprint(grid_pos: Vector2i, blueprint_def: BlueprintDefinition) -> bool:
+	if blueprint_def == null:
+		return false
+	if _farm_manager.get_tile_state(grid_pos) != _farm_manager.TileState.EMPTY:
+		return false
+
+	var placement_surface: String = blueprint_def.placement_surface
+	if placement_surface == "WATER":
+		return GridManager.is_buildable_on_water(grid_pos)
+	return GridManager.is_buildable_on_land(grid_pos)
+
 func _handle_left_click(grid_pos: Vector2i) -> void:
 	if _is_house_interaction_cell(grid_pos):
 		var hud = get_node_or_null("HUD")
@@ -105,9 +136,6 @@ func _handle_left_click(grid_pos: Vector2i) -> void:
 		var hud = get_node_or_null("HUD")
 		if hud:
 			hud.toggle_shop()
-		return
-
-	if GridManager.is_cell_solid(grid_pos) and _farm_manager.get_tile_state(grid_pos) == _farm_manager.TileState.EMPTY:
 		return
 
 	if _farm_manager.get_tile_state(grid_pos) == _farm_manager.TileState.EMPTY:
@@ -122,11 +150,12 @@ func _place_available_blueprint(grid_pos: Vector2i, inv: Node, f_manager: Node) 
 		if inv.get_blueprint_stock(blueprint_type) < 1:
 			continue
 
-		if not inv.consume_blueprint(blueprint_type):
-			return
-
-		var blueprint_def = GameData.get_blueprint_def(blueprint_type)
+		var blueprint_def: BlueprintDefinition = GameData.get_blueprint_def(blueprint_type)
 		if blueprint_def == null:
+			continue
+		if not _can_place_blueprint(grid_pos, blueprint_def):
+			continue
+		if not inv.consume_blueprint(blueprint_type):
 			return
 
 		if blueprint_def.placement_type == "CROP":
@@ -142,10 +171,9 @@ func _place_available_blueprint(grid_pos: Vector2i, inv: Node, f_manager: Node) 
 				if processor_type == GameData.PROCESSOR_MILL:
 					inv.mill_count += 1
 				f_manager.register_processor(grid_pos, processor_type, blueprint_type)
-				tile_type = processor_type
 			else:
-            f_manager.register_building(grid_pos, tile_type, blueprint_type)
-            GridManager.set_cell_solid(grid_pos, false)
+				f_manager.register_building(grid_pos, tile_type, blueprint_type)
+			GridManager.set_cell_solid(grid_pos, false)
 		return
 
 func has_empty_pen(pen_type: String) -> bool:
@@ -181,7 +209,7 @@ func _spawn_animal_at_shop(type: String) -> void:
 func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String) -> void:
 	var node_name = "Tile_" + str(grid_pos.x) + "_" + str(grid_pos.y)
 	var tile = _find_tile_visual(node_name)
-	var target_layer: Node2D = _get_visual_layer(state_name, tex_path)
+	var target_layer: Node2D = _get_visual_layer(grid_pos, state_name, tex_path)
 
 	if tex_path == "" or tex_path.contains("blueprint_indicator"):
 		if tile != null:
@@ -215,19 +243,22 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 		tile.modulate = Color(1, 1, 1, 1.0)
 
 func _find_tile_visual(node_name: String) -> Sprite2D:
-	for layer in [plot_layer, pen_layer, building_layer]:
+	for layer in [plot_layer, pen_layer, building_layer, water_building_layer]:
+		if layer == null: continue
 		var node = layer.get_node_or_null(node_name)
 		if node != null:
 			return node as Sprite2D
 	return null
 
-func _get_visual_layer(state_name: String, tex_path: String) -> Node2D:
+func _get_visual_layer(grid_pos: Vector2i, state_name: String, tex_path: String) -> Node2D:
 	if state_name == GameData.BLUEPRINT_COOP or state_name == GameData.BLUEPRINT_COW_PEN:
 		return pen_layer
 	if "coop" in tex_path or "cow_pen" in tex_path:
 		return pen_layer
 	if state_name == "BLUEPRINT" or "dirt" in tex_path or "sprout" in tex_path or "crop" in tex_path or "ready" in tex_path:
 		return plot_layer
+	if GridManager.is_water_cell(grid_pos) and water_building_layer != null:
+		return water_building_layer
 	return building_layer
 
 func _move_visual_to_layer(tile: Sprite2D, target_layer: Node2D) -> void:
@@ -273,4 +304,3 @@ func _spawn_sprite(parent: Node2D, grid_pos: Vector2i, texture_path: String, fal
 	var sprite = _create_sprite_node(texture_path, fallback_color)
 	sprite.position = _grid_to_world_center(grid_pos)
 	parent.add_child(sprite)
-

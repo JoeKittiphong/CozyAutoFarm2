@@ -6,6 +6,9 @@ const MAP_WIDTH := 100
 const MAP_HEIGHT := 100
 
 var grid: AStarGrid2D
+var ground_cells: Dictionary = {}
+var water_cells: Dictionary = {}
+var blocked_cells: Dictionary = {}
 
 func _ready() -> void:
 	grid = AStarGrid2D.new()
@@ -30,16 +33,40 @@ func is_cell_solid(cell: Vector2i) -> bool:
 		return true
 	return grid.is_point_solid(cell)
 
-func reset_map_cells(walkable_cells: Array[Vector2i], blocked_cells: Array[Vector2i] = []) -> void:
+func is_ground_cell(cell: Vector2i) -> bool:
+	return ground_cells.has(cell)
+
+func is_water_cell(cell: Vector2i) -> bool:
+	return water_cells.has(cell)
+
+func is_blocked_cell(cell: Vector2i) -> bool:
+	return blocked_cells.has(cell)
+
+func is_buildable_on_land(cell: Vector2i) -> bool:
+	return is_ground_cell(cell) and not is_water_cell(cell) and not is_blocked_cell(cell)
+
+func is_buildable_on_water(cell: Vector2i) -> bool:
+	return is_water_cell(cell) and not is_blocked_cell(cell)
+
+func reset_map_cells(ground_walkable_cells: Array[Vector2i], water_surface_cells: Array[Vector2i] = [], blocked_surface_cells: Array[Vector2i] = []) -> void:
 	if grid == null:
 		return
+
+	ground_cells.clear()
+	water_cells.clear()
+	blocked_cells.clear()
 
 	for x in range(grid.region.position.x, grid.region.end.x):
 		for y in range(grid.region.position.y, grid.region.end.y):
 			grid.set_point_solid(Vector2i(x, y), true)
 
-	for cell in walkable_cells:
+	for cell in ground_walkable_cells:
+		ground_cells[cell] = true
 		set_cell_solid(cell, false)
 
-	for cell in blocked_cells:
+	for cell in water_surface_cells:
+		water_cells[cell] = true
+
+	for cell in blocked_surface_cells:
+		blocked_cells[cell] = true
 		set_cell_solid(cell, true)
