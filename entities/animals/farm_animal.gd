@@ -1,7 +1,6 @@
 extends Node2D
 class_name FarmAnimal
 
-const GameData = preload("res://systems/core/game_data.gd")
 
 const TILE_SIZE = 128
 

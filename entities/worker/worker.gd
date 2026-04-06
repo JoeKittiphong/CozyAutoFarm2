@@ -1,7 +1,6 @@
 extends Node2D
 class_name FarmWorker
 
-const GameData = preload("res://systems/core/game_data.gd")
 
 @export var move_speed: float = 300.0
 const TILE_SIZE = 128

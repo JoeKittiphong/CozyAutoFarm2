@@ -1,7 +1,6 @@
 extends Node
 class_name FarmManagerClass
 
-const GameData = preload("res://systems/core/game_data.gd")
 
 enum TileState {
 	EMPTY,

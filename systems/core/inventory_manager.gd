@@ -1,6 +1,6 @@
 extends Node
+class_name InventoryClass
 
-const GameData = preload("res://systems/core/game_data.gd")
 
 signal resources_updated
 

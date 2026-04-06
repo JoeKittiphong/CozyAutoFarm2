@@ -1,10 +1,6 @@
 class_name GameData
 extends RefCounted
 
-const ItemDefinition = preload("res://systems/data/item_definition.gd")
-const ProcessorDefinition = preload("res://systems/data/processor_definition.gd")
-const BlueprintDefinition = preload("res://systems/data/blueprint_definition.gd")
-const AnimalDefinition = preload("res://systems/data/animal_definition.gd")
 
 const STORAGE_POS := Vector2i(-2, -1)
 const PROCESSING_STORAGE_POS := Vector2i(2, -1)

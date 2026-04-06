@@ -1,7 +1,6 @@
 extends Node
 class_name JobManagerClass
 
-const GameData = preload("res://systems/core/game_data.gd")
 
 var jobs: Array[Dictionary] = []
 

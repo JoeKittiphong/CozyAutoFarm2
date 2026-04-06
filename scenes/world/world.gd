@@ -1,6 +1,5 @@
 extends Node2D
 
-const GameData = preload("res://systems/core/game_data.gd")
 
 @onready var ground_layer: Node2D = $GroundLayer
 @onready var farm_layer: Node2D = $FarmLayer
@@ -17,10 +16,9 @@ func _ready() -> void:
 	_generate_initial_grass()
 	_spawn_worker_system()
 
-	var hud_script = load("res://scenes/ui/hud.gd")
-	if hud_script:
-		var hud = hud_script.new()
-		hud.name = "HUD"
+	var hud_scene = load("res://scenes/ui/hud.tscn")
+	if hud_scene:
+		var hud = hud_scene.instantiate()
 		add_child(hud)
 
 func _spawn_worker_system() -> void:
@@ -211,8 +209,3 @@ func _generate_initial_grass() -> void:
 	for x in range(-15, 15):
 		for y in range(-10, 10):
 			_spawn_sprite(ground_layer, Vector2i(x, y), "res://assets/sprites/grass.png", Color.DARK_GREEN)
-
-
-
-
-
