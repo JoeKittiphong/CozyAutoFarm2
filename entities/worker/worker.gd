@@ -1,9 +1,19 @@
-extends Node2D
+﻿extends Node2D
 class_name FarmWorker
 
 @export var move_speed: float = 300.0
 const TILE_SIZE := 128
 const MAX_CARRY := 3
+const DIRECTION_FRONT := "front"
+const DIRECTION_BACK := "back"
+const DIRECTION_LEFT := "left"
+const DIRECTION_RIGHT := "right"
+const DIRECTION_TEXTURE_PATHS := {
+	DIRECTION_FRONT: "res://assets/sprites/worker_front.png",
+	DIRECTION_BACK: "res://assets/sprites/worker_back.png",
+	DIRECTION_LEFT: "res://assets/sprites/worker_left.png",
+	DIRECTION_RIGHT: "res://assets/sprites/worker_right.png",
+}
 static var _next_worker_id: int = 1
 
 var worker_id: int = 0
@@ -18,6 +28,8 @@ var is_working := false
 var carried_items: Dictionary = {}
 var carried_animal: Node2D = null
 var _work_tween: Tween
+var _worker_direction_textures: Dictionary = {}
+var _current_direction: String = DIRECTION_FRONT
 
 @onready var sprite: Sprite2D = Sprite2D.new()
 @onready var _job_manager: Node = get_node("/root/JobManager")
@@ -33,22 +45,8 @@ func _ready() -> void:
 	name = "Worker_%d" % worker_id
 	add_to_group("workers")
 
-	var tex = ResourceLoader.load("res://assets/sprites/worker.png")
-	if tex == null:
-		var fallback = GradientTexture2D.new()
-		fallback.width = 80
-		fallback.height = 80
-		fallback.fill_to = Vector2(1, 1)
-		var grad = Gradient.new()
-		grad.set_color(0, Color.GOLD)
-		grad.set_color(1, Color.ORANGE)
-		fallback.gradient = grad
-		tex = fallback
-
-	sprite.texture = tex
-	if tex != null:
-		var t_size = tex.get_size()
-		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y) * 0.9
+	_load_directional_textures()
+	_apply_direction_texture(_current_direction)
 	sprite.position = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
 	add_child(sprite)
 
@@ -88,6 +86,7 @@ func _process(delta: float) -> void:
 		var target_grid_pos = current_path[0]
 		var target_world_pos = Vector2(target_grid_pos) * TILE_SIZE
 		var dir = (target_world_pos - position).normalized()
+		_update_direction_from_vector(dir)
 		var dist = position.distance_to(target_world_pos)
 		var move_amount = move_speed * delta
 		if move_amount >= dist:
@@ -95,6 +94,46 @@ func _process(delta: float) -> void:
 			current_path.pop_front()
 		else:
 			position += dir * move_amount
+
+func _load_directional_textures() -> void:
+	_worker_direction_textures.clear()
+	for direction in DIRECTION_TEXTURE_PATHS.keys():
+		var tex = ResourceLoader.load(String(DIRECTION_TEXTURE_PATHS[direction]))
+		if tex != null:
+			_worker_direction_textures[direction] = tex
+
+	if _worker_direction_textures.is_empty():
+		var fallback = GradientTexture2D.new()
+		fallback.width = 80
+		fallback.height = 80
+		fallback.fill_to = Vector2(1, 1)
+		var grad = Gradient.new()
+		grad.set_color(0, Color.GOLD)
+		grad.set_color(1, Color.ORANGE)
+		fallback.gradient = grad
+		for direction in DIRECTION_TEXTURE_PATHS.keys():
+			_worker_direction_textures[direction] = fallback
+
+func _apply_direction_texture(direction: String) -> void:
+	var tex = _worker_direction_textures.get(direction, _worker_direction_textures.get(DIRECTION_FRONT, null))
+	if tex == null:
+		return
+	sprite.texture = tex
+	var t_size = tex.get_size()
+	if t_size.x > 0.0 and t_size.y > 0.0:
+		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y) * 0.9
+	_current_direction = direction
+
+func _update_direction_from_vector(dir: Vector2) -> void:
+	if dir == Vector2.ZERO:
+		return
+	var next_direction: String = _current_direction
+	if abs(dir.x) > abs(dir.y):
+		next_direction = DIRECTION_RIGHT if dir.x > 0.0 else DIRECTION_LEFT
+	else:
+		next_direction = DIRECTION_FRONT if dir.y > 0.0 else DIRECTION_BACK
+	if next_direction != _current_direction:
+		_apply_direction_texture(next_direction)
 
 func uses_auto_job_selection() -> bool:
 	return work_mode != GameData.WORK_MODE_ASSIGNED
@@ -551,5 +590,3 @@ func _complete_delivery() -> void:
 	carried_items.clear()
 	current_job.clear()
 	is_working = false
-
-
