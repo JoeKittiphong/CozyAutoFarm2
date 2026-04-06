@@ -1,9 +1,20 @@
 extends Button
 class_name ActionButtonComponent
 
-func configure(text_value: String, target: Object, method_name: String, binds: Array = []) -> void:
+signal action_pressed(action_id: String)
+
+var action_id: String = ""
+
+func _ready() -> void:
+	if not pressed.is_connected(_emit_action_pressed):
+		pressed.connect(_emit_action_pressed)
+
+func configure_action(id: String, text_value: String = "") -> void:
+	action_id = id
 	text = text_value
-	pressed.connect(Callable(target, method_name).bindv(binds))
 
 func set_button_text(text_value: String) -> void:
 	text = text_value
+
+func _emit_action_pressed() -> void:
+	action_pressed.emit(action_id)

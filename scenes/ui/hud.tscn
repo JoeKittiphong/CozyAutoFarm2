@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scenes/ui/hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://scenes/ui/components/game_action_list.gd" id="2_list"]
+[ext_resource type="Script" path="res://scenes/ui/components/game_resource_list.gd" id="3_reslist"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top"]
 bg_color = Color(0.15, 0.1, 0.1, 0.9)
@@ -35,6 +37,18 @@ border_color = Color(0.2, 0.9, 0.5, 1)
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_warehouse"]
+bg_color = Color(0.08, 0.12, 0.18, 0.96)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.55, 0.78, 0.9, 1)
+corner_radius_bottom_left = 10
+corner_radius_bottom_right = 10
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+
 [node name="HUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
 
@@ -45,21 +59,24 @@ offset_bottom = 40.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_top")
 
 [node name="BarContent" type="HBoxContainer" parent="TopBar"]
-alignment = 1
-theme_override_constants/separation = 20
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -450.0
-offset_top = -20.0
-offset_right = 450.0
-offset_bottom = 20.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 4.0
+offset_right = -12.0
+offset_bottom = -4.0
+theme_override_constants/separation = 12
 
 [node name="ResourcesContainer" type="HBoxContainer" parent="TopBar/BarContent"]
-size_flags_horizontal = 3
 theme_override_constants/separation = 16
+
+[node name="Spacer" type="Control" parent="TopBar/BarContent"]
+size_flags_horizontal = 3
+
+[node name="WarehouseButton" type="Button" parent="TopBar/BarContent"]
+custom_minimum_size = Vector2(120, 0)
+text = "Warehouse"
 
 [node name="MillButton" type="Button" parent="TopBar/BarContent"]
 custom_minimum_size = Vector2(120, 0)
@@ -71,6 +88,39 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 offset_top = 40.0
 mouse_filter = 2
+
+[node name="WarehousePanel" type="PanelContainer" parent="SidePanels"]
+visible = false
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -360.0
+offset_right = -10.0
+offset_top = 10.0
+offset_bottom = 560.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
+
+[node name="Content" type="VBoxContainer" parent="SidePanels/WarehousePanel"]
+theme_override_constants/separation = 15
+
+[node name="TopSpacer" type="Control" parent="SidePanels/WarehousePanel/Content"]
+custom_minimum_size = Vector2(0, 16)
+
+[node name="Title" type="Label" parent="SidePanels/WarehousePanel/Content"]
+text = "--- WAREHOUSE ---"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/WarehousePanel/Content"]
+custom_minimum_size = Vector2(0, 430)
+size_flags_vertical = 3
+
+[node name="ResourceList" type="VBoxContainer" parent="SidePanels/WarehousePanel/Content/ScrollContainer"]
+script = ExtResource("3_reslist")
+show_only_owned = true
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="CloseButton" type="Button" parent="SidePanels/WarehousePanel/Content"]
+text = "Close"
 
 [node name="ShopPanel" type="PanelContainer" parent="SidePanels"]
 visible = false
@@ -93,7 +143,19 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 520)
 size_flags_vertical = 3
 
-[node name="ItemList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer"]
+[node name="ScrollContent" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="SellList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent"]
+script = ExtResource("2_list")
+list_kind = "sellable_items"
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="AnimalList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent"]
+script = ExtResource("2_list")
+list_kind = "shop_animals"
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
@@ -132,6 +194,8 @@ custom_minimum_size = Vector2(0, 420)
 size_flags_vertical = 3
 
 [node name="BlueprintList" type="VBoxContainer" parent="SidePanels/WorkerPanel/Content/ScrollContainer"]
+script = ExtResource("2_list")
+list_kind = "blueprints"
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
@@ -171,3 +235,4 @@ text = "Upgrade"
 [node name="CloseButton" type="Button" parent="SidePanels/UpgradePanel/Content"]
 custom_minimum_size = Vector2(0, 50)
 text = "Close"
+

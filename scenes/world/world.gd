@@ -1,6 +1,5 @@
 extends Node2D
 
-
 @onready var ground_layer: Node2D = $GroundLayer
 @onready var farm_layer: Node2D = $FarmLayer
 @onready var highlight_rect: ColorRect = $HighlightRect
@@ -209,3 +208,4 @@ func _generate_initial_grass() -> void:
 	for x in range(-15, 15):
 		for y in range(-10, 10):
 			_spawn_sprite(ground_layer, Vector2i(x, y), "res://assets/sprites/grass.png", Color.DARK_GREEN)
+
