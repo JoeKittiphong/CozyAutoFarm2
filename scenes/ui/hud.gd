@@ -1,4 +1,4 @@
-﻿extends CanvasLayer
+extends CanvasLayer
 
 const ResourceItemScene = preload("res://scenes/ui/components/resource_item.tscn")
 

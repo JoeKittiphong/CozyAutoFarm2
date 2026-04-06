@@ -3,6 +3,7 @@
 [ext_resource type="Texture2D" uid="uid://cwi5ynvjqonw8" path="res://assets/sprites/grass.png" id="1_grass"]
 [ext_resource type="Texture2D" uid="uid://bp17k3rdhoh4e" path="res://assets/sprites/dirt.png" id="2_dirt"]
 [ext_resource type="Texture2D" uid="uid://s2bplq51hujo" path="res://assets/sprites/resource_rock.png" id="3_k7m0s"]
+[ext_resource type="Texture2D" uid="uid://j4dxndthdp58" path="res://assets/sprites/water_tile.png" id="3_n3lm4"]
 [ext_resource type="Texture2D" uid="uid://c8tseddfn6ofm" path="res://assets/sprites/resource_tree.png" id="4_n3lm4"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_grass"]
@@ -30,6 +31,74 @@ texture_region_size = Vector2i(128, 128)
 4:2/0 = 0
 3:2/0 = 0
 2:2/0 = 0
+
+[sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_bmane"]
+texture = ExtResource("3_n3lm4")
+texture_region_size = Vector2i(128, 128)
+0:0/0 = 0
+1:0/0 = 0
+2:0/0 = 0
+3:0/0 = 0
+4:0/0 = 0
+5:0/0 = 0
+6:0/0 = 0
+7:0/0 = 0
+0:1/0 = 0
+1:1/0 = 0
+2:1/0 = 0
+3:1/0 = 0
+4:1/0 = 0
+5:1/0 = 0
+6:1/0 = 0
+7:1/0 = 0
+0:2/0 = 0
+1:2/0 = 0
+2:2/0 = 0
+3:2/0 = 0
+4:2/0 = 0
+5:2/0 = 0
+6:2/0 = 0
+7:2/0 = 0
+0:3/0 = 0
+1:3/0 = 0
+2:3/0 = 0
+3:3/0 = 0
+4:3/0 = 0
+5:3/0 = 0
+6:3/0 = 0
+7:3/0 = 0
+0:4/0 = 0
+1:4/0 = 0
+2:4/0 = 0
+3:4/0 = 0
+4:4/0 = 0
+5:4/0 = 0
+6:4/0 = 0
+7:4/0 = 0
+0:5/0 = 0
+1:5/0 = 0
+2:5/0 = 0
+3:5/0 = 0
+4:5/0 = 0
+5:5/0 = 0
+6:5/0 = 0
+7:5/0 = 0
+0:6/0 = 0
+1:6/0 = 0
+2:6/0 = 0
+3:6/0 = 0
+4:6/0 = 0
+5:6/0 = 0
+6:6/0 = 0
+7:6/0 = 0
+0:7/0 = 0
+1:7/0 = 0
+2:7/0 = 0
+3:7/0 = 0
+4:7/0 = 0
+5:7/0 = 0
+6:7/0 = 0
+7:7/0 = 0
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_jfg2u"]
 texture = ExtResource("3_k7m0s")
@@ -59,3 +128,4 @@ sources/0 = SubResource("TileSetAtlasSource_grass")
 sources/1 = SubResource("TileSetAtlasSource_dirt")
 sources/5 = SubResource("TileSetAtlasSource_jfg2u")
 sources/6 = SubResource("TileSetAtlasSource_3obos")
+sources/2 = SubResource("TileSetAtlasSource_bmane")
