@@ -1,7 +1,10 @@
 extends Node
 class_name JobManagerClass
 
+const AUTO_GATHER_INTERVAL := 3
+
 var jobs: Array[Dictionary] = []
+var _auto_non_resource_jobs_since_gather: int = 0
 
 func add_job(type: String, target_pos: Vector2i, extra_data: Dictionary = {}) -> void:
 	if type != GameData.JOB_FETCH_ANIMAL:
@@ -31,10 +34,27 @@ func _find_first_job_index(prefer_non_resource: bool) -> int:
 			return index
 	return 0
 
+func _find_first_resource_job_index() -> int:
+	for index in range(jobs.size()):
+		if String(jobs[index].get("type", "")) == GameData.JOB_GATHER_RESOURCE:
+			return index
+	return -1
+
 func get_next_job() -> Dictionary:
+	var resource_index: int = _find_first_resource_job_index()
+	if resource_index >= 0 and _auto_non_resource_jobs_since_gather >= AUTO_GATHER_INTERVAL:
+		_auto_non_resource_jobs_since_gather = 0
+		return _pop_job_at(resource_index)
+
 	var index := _find_first_job_index(true)
 	if index < 0:
 		return {}
+
+	var job_type: String = String(jobs[index].get("type", ""))
+	if job_type == GameData.JOB_GATHER_RESOURCE:
+		_auto_non_resource_jobs_since_gather = 0
+	else:
+		_auto_non_resource_jobs_since_gather += 1
 	return _pop_job_at(index)
 
 func get_next_job_for_worker(worker: FarmWorker) -> Dictionary:

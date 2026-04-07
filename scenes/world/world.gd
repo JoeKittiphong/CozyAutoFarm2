@@ -1,7 +1,7 @@
 extends Node2D
 
 const MapScannerClass = preload("res://systems/grid/map_scanner.gd")
-const TILE_SIZE := 128
+
 const DEFAULT_MAP_RECT := Rect2i(-15, -10, 30, 20)
 const GROUND_SOURCE_ID := 0
 const GROUND_ATLAS_COORDS := Vector2i.ZERO
@@ -28,7 +28,11 @@ const START_CAMERA_LEFT_UI_WIDTH := 360.0
 @onready var _resource_manager: Node = get_node("/root/ResourceManager")
 
 func _ready() -> void:
-	highlight_rect.size = Vector2(TILE_SIZE, TILE_SIZE)
+	# บังคับขนาดช่อง TileSet ให้ตรงกับค่ากลางใน GameData
+	if ground_layer and ground_layer.tile_set:
+		ground_layer.tile_set.tile_size = Vector2i(GameData.TILE_SIZE, GameData.TILE_SIZE)
+
+	highlight_rect.size = Vector2(GameData.TILE_SIZE, GameData.TILE_SIZE)
 	highlight_rect.color = Color(1, 1, 1, 0.3)
 	_fit_window_to_screen()
 	if not get_viewport().size_changed.is_connected(_on_viewport_size_changed):
@@ -85,7 +89,7 @@ func _frame_start_camera() -> void:
 	if game_camera == null:
 		return
 	var world_rect: Rect2 = _get_start_world_rect()
-	game_camera.frame_world_rect(world_rect, Vector2(TILE_SIZE * 1.5, TILE_SIZE * 1.5), START_CAMERA_LEFT_UI_WIDTH)
+	game_camera.frame_world_rect(world_rect, Vector2(GameData.TILE_SIZE * 1.5, GameData.TILE_SIZE * 1.5), START_CAMERA_LEFT_UI_WIDTH)
 
 func _get_start_world_rect() -> Rect2:
 	var has_any := false
@@ -119,7 +123,7 @@ func _get_start_world_rect() -> Rect2:
 			max_cell.y = max(max_cell.y, cell.y)
 
 	if not has_any:
-		return Rect2(Vector2.ZERO, Vector2(TILE_SIZE * 8, TILE_SIZE * 6))
+		return Rect2(Vector2.ZERO, Vector2(GameData.TILE_SIZE * 8, GameData.TILE_SIZE * 6))
 
 	min_cell -= Vector2i(2, 2)
 	max_cell += Vector2i(2, 2)
@@ -170,7 +174,7 @@ func _grid_to_world_center(grid_pos: Vector2i) -> Vector2:
 	return ground_layer.to_global(ground_layer.map_to_local(grid_pos))
 
 func _grid_to_world_top_left(grid_pos: Vector2i) -> Vector2:
-	return _grid_to_world_center(grid_pos) - Vector2(TILE_SIZE, TILE_SIZE) * 0.5
+	return _grid_to_world_center(grid_pos) - Vector2(GameData.TILE_SIZE, GameData.TILE_SIZE) * 0.5
 
 func _marker_to_grid(marker: Marker2D) -> Vector2i:
 	return _get_grid_position(marker.global_position)
@@ -246,7 +250,7 @@ func _place_available_blueprint(grid_pos: Vector2i, inv: Node, f_manager: Node) 
 				f_manager.register_processor(grid_pos, processor_type, blueprint_type)
 			else:
 				f_manager.register_building(grid_pos, tile_type, blueprint_type)
-			GridManager.set_cell_solid(grid_pos, false)
+			GridManager.set_cell_solid(grid_pos, blueprint_def.placement_surface == "WATER")
 		return
 
 func has_empty_pen(pen_type: String) -> bool:
@@ -296,7 +300,7 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 			if tex:
 				tile.texture = tex
 				var t_size = tex.get_size()
-				tile.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y)
+				tile.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y)
 		return
 
 	if tile == null:
@@ -310,7 +314,7 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 		if tex:
 			tile.texture = tex
 			var t_size = tex.get_size()
-			tile.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y)
+			tile.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y)
 			if "crop" in tex_path or "sprout" in tex_path or "ready" in tex_path:
 				tile.scale *= 0.6
 
@@ -354,27 +358,27 @@ func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2
 
 	if tex == null:
 		var fallback = GradientTexture2D.new()
-		fallback.width = TILE_SIZE
-		fallback.height = TILE_SIZE
+		fallback.width = GameData.TILE_SIZE
+		fallback.height = GameData.TILE_SIZE
 		fallback.fill_to = Vector2(1, 1)
 		var grad = Gradient.new()
 		grad.set_color(0, fallback_color)
 		grad.set_color(1, fallback_color.darkened(0.2))
 		if "crop" in texture_path:
-			fallback.width = int(TILE_SIZE * 0.6)
-			fallback.height = int(TILE_SIZE * 0.6)
+			fallback.width = int(GameData.TILE_SIZE * 0.6)
+			fallback.height = int(GameData.TILE_SIZE * 0.6)
 		fallback.gradient = grad
 		tex = fallback
 		sprite.texture = tex
 	else:
 		sprite.texture = tex
 		var t_size = tex.get_size()
-		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y)
+		sprite.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y)
 		if "crop" in texture_path or "sprout" in texture_path or "ready" in texture_path:
 			sprite.scale *= 0.6
 		if "worker_house" in texture_path:
 			sprite.scale *= 2.0
-			sprite.position -= Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+			sprite.position -= Vector2(GameData.TILE_SIZE / 2.0, GameData.TILE_SIZE / 2.0)
 
 	return sprite
 

@@ -19,6 +19,7 @@ var _farm_data: Dictionary = {}
 var _growth_time: Dictionary = {}
 var _processor_data: Dictionary = {}
 const TIME_TO_GROW := 30.0
+const PROCESSOR_INPUT_RETRY_SECONDS := 5.0
 
 @onready var _job_manager: Node = get_node("/root/JobManager")
 @onready var _world: Node = get_node_or_null("/root/World")
@@ -58,7 +59,8 @@ func _process_processor(cell: Vector2i, delta: float) -> void:
 			_job_manager.add_job(GameData.JOB_PROCESSOR_COLLECT, cell, {
 				"item_type": String(output_def.get("item", "")),
 				"amount": int(output_def.get("amount", 1)),
-				"storage_pos": data.get("collect_storage_pos", GameData.PROCESSING_STORAGE_POS),
+				"storage_pos": _get_safe_storage_pos(Vector2i(data.get("collect_storage_pos", GameData.PROCESSING_STORAGE_POS))),
+				"interaction_pos": _get_processor_interaction_pos(cell),
 			})
 			_notify_world_visual(cell, String(data.get("ready_state_name", "READY")), GameData.get_processor_ready_texture(String(data.get("processor_type", "")), get_tile_level(cell)))
 	elif data.get("state", "WAITING") == "WAITING":
@@ -151,7 +153,7 @@ func register_building(cell: Vector2i, tile_type: String, blueprint_id: String =
 	_notify_world_visual(cell, tile_type, GameData.get_blueprint_level_texture(blueprint_id, 1))
 
 func register_processor(cell: Vector2i, processor_type: String, blueprint_id: String = "") -> void:
-	var processor_def := GameData.get_processor_def(processor_type)
+	var processor_def: ProcessorDefinition = GameData.get_processor_def(processor_type)
 	if processor_def == null:
 		return
 	if blueprint_id == "":
@@ -179,30 +181,69 @@ func register_processor(cell: Vector2i, processor_type: String, blueprint_id: St
 
 func _request_processor_ingredients(cell: Vector2i) -> void:
 	var data: Dictionary = _processor_data.get(cell, {})
-	var processor_def := GameData.get_processor_def(String(data.get("processor_type", "")))
+	var processor_def: ProcessorDefinition = GameData.get_processor_def(String(data.get("processor_type", "")))
 	if processor_def == null:
 		return
 	var jobs_requested: Array = data.get("jobs_requested", [])
 	var stored_inputs: Dictionary = data.get("stored_inputs", {})
+	var retry_until: Dictionary = data.get("input_retry_until", {})
+	var now_seconds: float = Time.get_ticks_msec() / 1000.0
+	var storage_pos: Vector2i = _get_safe_storage_pos(Vector2i(data.get("deliver_storage_pos", GameData.STORAGE_POS)))
+	var interaction_pos: Vector2i = _get_processor_interaction_pos(cell)
+	if not GridManager.is_walkable_land_cell(storage_pos):
+		return
+	if not GridManager.is_walkable_land_cell(interaction_pos):
+		return
+	if storage_pos != interaction_pos and GridManager.get_path_cells(storage_pos, interaction_pos).is_empty():
+		return
+
 	for input_def in processor_def.inputs:
 		if input_def.item_def == null:
 			continue
 		var item_type: String = input_def.item_def.item_id
 		var required: int = input_def.amount
-		var stored := int(stored_inputs.get(item_type, 0))
+		var stored: int = int(stored_inputs.get(item_type, 0))
 		if stored >= required:
 			continue
 		if item_type in jobs_requested:
+			continue
+		if float(retry_until.get(item_type, 0.0)) > now_seconds:
+			continue
+		if _inventory_manager.get_item_stock(item_type) < 1:
 			continue
 
 		_job_manager.add_job(GameData.JOB_PROCESSOR_DELIVER, cell, {
 			"item_type": item_type,
 			"amount": 1,
-			"storage_pos": data.get("deliver_storage_pos", GameData.STORAGE_POS),
+			"storage_pos": storage_pos,
+			"interaction_pos": interaction_pos,
 		})
 		jobs_requested.append(item_type)
 
 	data["jobs_requested"] = jobs_requested
+	data["input_retry_until"] = retry_until
+
+func cancel_processor_delivery(cell: Vector2i, item_type: String, retry_seconds: float = PROCESSOR_INPUT_RETRY_SECONDS) -> void:
+	if not _processor_data.has(cell):
+		return
+	var data: Dictionary = _processor_data[cell]
+	var jobs_requested: Array = data.get("jobs_requested", [])
+	if item_type in jobs_requested:
+		jobs_requested.erase(item_type)
+	data["jobs_requested"] = jobs_requested
+	var retry_until: Dictionary = data.get("input_retry_until", {})
+	retry_until[item_type] = (Time.get_ticks_msec() / 1000.0) + retry_seconds
+	data["input_retry_until"] = retry_until
+
+func _get_safe_storage_pos(storage_pos: Vector2i) -> Vector2i:
+	if GridManager.is_walkable_land_cell(storage_pos):
+		return storage_pos
+	return GridManager.find_nearest_walkable_land_cell(storage_pos, 12)
+
+func _get_processor_interaction_pos(cell: Vector2i) -> Vector2i:
+	if GridManager.is_walkable_land_cell(cell):
+		return cell
+	return GridManager.find_nearest_walkable_land_cell(cell, 8)
 
 func deliver_to_processor(cell: Vector2i, item_type: String, amount: int = 1) -> void:
 	if not _processor_data.has(cell):

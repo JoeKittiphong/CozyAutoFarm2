@@ -1,7 +1,7 @@
 extends Node2D
 class_name FarmAnimal
 
-const TILE_SIZE = 128
+
 
 @export var animal_type: String = ""
 
@@ -54,7 +54,7 @@ func _process(delta: float) -> void:
 
 func setup(grid_pos: Vector2i) -> void:
 	home_pos = grid_pos
-	position = Vector2(home_pos.x * TILE_SIZE, home_pos.y * TILE_SIZE)
+	position = Vector2(home_pos.x * GameData.TILE_SIZE, home_pos.y * GameData.TILE_SIZE)
 	state = GameData.STATE_HUNGRY
 	_pick_new_wander_target(GameData.get_animal_def(animal_type))
 
@@ -102,9 +102,9 @@ func _wander(delta: float, animal_def: AnimalDefinition) -> void:
 func _pick_new_wander_target(animal_def: AnimalDefinition) -> void:
 	if animal_def == null:
 		return
-	var world_home = Vector2(home_pos) * TILE_SIZE
+	var world_home = Vector2(home_pos) * GameData.TILE_SIZE
 	var padding: float = animal_def.wander_padding
-	target_wander = world_home + Vector2(randf_range(padding, TILE_SIZE - padding), randf_range(padding, TILE_SIZE - padding))
+	target_wander = world_home + Vector2(randf_range(padding, GameData.TILE_SIZE - padding), randf_range(padding, GameData.TILE_SIZE - padding))
 
 func _apply_definition() -> void:
 	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
@@ -118,8 +118,8 @@ func _apply_definition() -> void:
 	if tex:
 		sprite.texture = tex
 		var t_size = tex.get_size()
-		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y) * animal_def.sprite_scale
-	sprite.position = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+		sprite.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y) * animal_def.sprite_scale
+	sprite.position = Vector2(GameData.TILE_SIZE / 2.0, GameData.TILE_SIZE / 2.0)
 
 func update_visual(level: int) -> void:
 	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
@@ -131,5 +131,5 @@ func update_visual(level: int) -> void:
 	if tex:
 		sprite.texture = tex
 		var t_size = tex.get_size()
-		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y) * animal_def.sprite_scale
+		sprite.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y) * animal_def.sprite_scale
 

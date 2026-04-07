@@ -1,8 +1,8 @@
-﻿extends Node2D
+extends Node2D
 class_name FarmWorker
 
 @export var move_speed: float = 300.0
-const TILE_SIZE := 128
+
 const MAX_CARRY := 3
 const DIRECTION_FRONT := "front"
 const DIRECTION_BACK := "back"
@@ -47,7 +47,7 @@ func _ready() -> void:
 
 	_load_directional_textures()
 	_apply_direction_texture(_current_direction)
-	sprite.position = Vector2(TILE_SIZE / 2.0, TILE_SIZE / 2.0)
+	sprite.position = Vector2(GameData.TILE_SIZE / 2.0, GameData.TILE_SIZE / 2.0)
 	add_child(sprite)
 
 func _process(delta: float) -> void:
@@ -84,7 +84,7 @@ func _process(delta: float) -> void:
 				_start_work()
 	else:
 		var target_grid_pos = current_path[0]
-		var target_world_pos = Vector2(target_grid_pos) * TILE_SIZE
+		var target_world_pos = Vector2(target_grid_pos) * GameData.TILE_SIZE
 		var dir = (target_world_pos - position).normalized()
 		_update_direction_from_vector(dir)
 		var dist = position.distance_to(target_world_pos)
@@ -121,7 +121,7 @@ func _apply_direction_texture(direction: String) -> void:
 	sprite.texture = tex
 	var t_size = tex.get_size()
 	if t_size.x > 0.0 and t_size.y > 0.0:
-		sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y) * 0.9
+		sprite.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y) * 0.9
 	_current_direction = direction
 
 func _update_direction_from_vector(dir: Vector2) -> void:
@@ -230,7 +230,7 @@ func _is_complex_job(job: Dictionary) -> bool:
 	]
 
 func _get_current_grid_pos() -> Vector2i:
-	return Vector2i(round(position.x / TILE_SIZE), round(position.y / TILE_SIZE))
+	return Vector2i(round(position.x / GameData.TILE_SIZE), round(position.y / GameData.TILE_SIZE))
 
 func _start_work() -> void:
 	is_working = true
@@ -238,8 +238,8 @@ func _start_work() -> void:
 		_work_tween.kill()
 
 	_work_tween = create_tween().set_loops(3)
-	_work_tween.tween_property(sprite, "position:y", TILE_SIZE / 2.0 - 20, 0.15)
-	_work_tween.tween_property(sprite, "position:y", TILE_SIZE / 2.0, 0.15)
+	_work_tween.tween_property(sprite, "position:y", GameData.TILE_SIZE / 2.0 - 20, 0.15)
+	_work_tween.tween_property(sprite, "position:y", GameData.TILE_SIZE / 2.0, 0.15)
 	await get_tree().create_timer(1.0).timeout
 
 	match String(current_job.get("type", "")):
@@ -434,26 +434,54 @@ func _handle_fetch_animal() -> void:
 func _handle_processor_deliver() -> void:
 	var item_type: String = String(current_job.get("item_type", ""))
 	var amount: int = int(current_job.get("amount", 1))
-	var storage_pos := Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type)))
+	var storage_pos: Vector2i = Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type)))
+	var interaction_pos: Vector2i = Vector2i(current_job.get("interaction_pos", current_job.target_pos))
+	var grid_pos: Vector2i = _get_current_grid_pos()
 	if _get_carried_amount(item_type) < amount:
-		var grid_pos = _get_current_grid_pos()
 		if grid_pos != storage_pos:
 			current_path = _grid_manager.get_path_cells(grid_pos, storage_pos)
+			if current_path.is_empty():
+				if _farm_manager.has_method("cancel_processor_delivery"):
+					_farm_manager.cancel_processor_delivery(current_job.target_pos, item_type)
+				current_job.clear()
+				is_working = false
+				return
 			is_working = false
 			return
 
 		if not _inventory_manager.spend_item(item_type, amount):
-			_job_manager.add_job(GameData.JOB_PROCESSOR_DELIVER, current_job.target_pos, {
-				"item_type": item_type,
-				"amount": amount,
-				"storage_pos": storage_pos,
-			})
+			if _farm_manager.has_method("cancel_processor_delivery"):
+				_farm_manager.cancel_processor_delivery(current_job.target_pos, item_type)
 			current_job.clear()
 			is_working = false
 			return
 
 		_add_carried_item(item_type, amount)
-		current_path = _grid_manager.get_path_cells(grid_pos, current_job.target_pos)
+		if grid_pos != interaction_pos:
+			current_path = _grid_manager.get_path_cells(grid_pos, interaction_pos)
+		else:
+			current_path.clear()
+		if current_path.is_empty() and grid_pos != interaction_pos:
+			_remove_carried_item(item_type, amount)
+			_inventory_manager.add_item(item_type, amount)
+			if _farm_manager.has_method("cancel_processor_delivery"):
+				_farm_manager.cancel_processor_delivery(current_job.target_pos, item_type)
+			current_job.clear()
+			is_working = false
+			return
+		is_working = false
+		return
+
+	if grid_pos != interaction_pos:
+		current_path = _grid_manager.get_path_cells(grid_pos, interaction_pos)
+		if current_path.is_empty():
+			_remove_carried_item(item_type, amount)
+			_inventory_manager.add_item(item_type, amount)
+			if _farm_manager.has_method("cancel_processor_delivery"):
+				_farm_manager.cancel_processor_delivery(current_job.target_pos, item_type)
+			current_job.clear()
+			is_working = false
+			return
 		is_working = false
 		return
 
@@ -465,11 +493,16 @@ func _handle_processor_deliver() -> void:
 func _handle_processor_collect() -> void:
 	var item_type: String = String(current_job.get("item_type", ""))
 	var amount: int = int(current_job.get("amount", 1))
-	var storage_pos := Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type)))
+	var storage_pos: Vector2i = Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type)))
+	var interaction_pos: Vector2i = Vector2i(current_job.get("interaction_pos", current_job.target_pos))
 	if _get_carried_amount(item_type) < amount:
-		var grid_pos = _get_current_grid_pos()
-		if grid_pos != current_job.target_pos:
-			current_path = _grid_manager.get_path_cells(grid_pos, current_job.target_pos)
+		var grid_pos: Vector2i = _get_current_grid_pos()
+		if grid_pos != interaction_pos:
+			current_path = _grid_manager.get_path_cells(grid_pos, interaction_pos)
+			if current_path.is_empty():
+				current_job.clear()
+				is_working = false
+				return
 			is_working = false
 			return
 
@@ -480,7 +513,16 @@ func _handle_processor_collect() -> void:
 			return
 
 		_add_carried_item(String(collected.get("item", item_type)), int(collected.get("amount", amount)))
-		current_path = _grid_manager.get_path_cells(grid_pos, storage_pos)
+		if grid_pos != storage_pos:
+			current_path = _grid_manager.get_path_cells(grid_pos, storage_pos)
+			if current_path.is_empty():
+				_inventory_manager.add_item(String(collected.get("item", item_type)), int(collected.get("amount", amount)))
+				_remove_carried_item(String(collected.get("item", item_type)), int(collected.get("amount", amount)))
+				current_job.clear()
+				is_working = false
+				return
+		else:
+			current_path.clear()
 		is_working = false
 		return
 
@@ -568,10 +610,10 @@ func _update_carried_visual() -> void:
 	if tex:
 		item_sprite.texture = tex
 		var t_size = tex.get_size()
-		item_sprite.scale = Vector2(TILE_SIZE / t_size.x, TILE_SIZE / t_size.y) * 0.5
+		item_sprite.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y) * 0.5
 	item_sprite.name = "CarriedItem"
 	add_child(item_sprite)
-	item_sprite.position = Vector2(TILE_SIZE / 2.0, -10.0 - (count * 8))
+	item_sprite.position = Vector2(GameData.TILE_SIZE / 2.0, -10.0 - (count * 8))
 
 func _start_delivery() -> void:
 	current_job = {"type": GameData.JOB_DELIVER, "target_pos": GameData.PROCESSING_STORAGE_POS}
@@ -590,3 +632,4 @@ func _complete_delivery() -> void:
 	carried_items.clear()
 	current_job.clear()
 	is_working = false
+

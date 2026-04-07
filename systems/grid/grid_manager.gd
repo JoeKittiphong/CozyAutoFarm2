@@ -1,7 +1,7 @@
 extends Node
 class_name GridManagerClass
 
-const TILE_SIZE := 128
+
 const DEFAULT_GRID_REGION := Rect2i(-50, -50, 100, 100)
 
 var grid: AStarGrid2D
@@ -16,7 +16,7 @@ func _ready() -> void:
 
 func _configure_grid(region: Rect2i) -> void:
 	grid.region = region
-	grid.cell_size = Vector2(TILE_SIZE, TILE_SIZE)
+	grid.cell_size = Vector2(GameData.TILE_SIZE, GameData.TILE_SIZE)
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
 	grid.update()
 
@@ -28,6 +28,9 @@ func get_path_cells(start_cell: Vector2i, end_cell: Vector2i) -> Array[Vector2i]
 func set_cell_solid(cell: Vector2i, solid: bool) -> void:
 	if grid.is_in_bounds(cell.x, cell.y):
 		grid.set_point_solid(cell, solid)
+
+func _refresh_cell_solid(cell: Vector2i) -> void:
+	set_cell_solid(cell, is_water_cell(cell) or has_obstacle_blocker(cell) or has_resource_blocker(cell))
 
 func is_cell_solid(cell: Vector2i) -> bool:
 	if grid == null:
@@ -53,12 +56,12 @@ func is_blocked_cell(cell: Vector2i) -> bool:
 
 func clear_resource_blocker(cell: Vector2i) -> void:
 	resource_blocked_cells.erase(cell)
-	set_cell_solid(cell, has_obstacle_blocker(cell))
+	_refresh_cell_solid(cell)
 
 func clear_all_blockers(cell: Vector2i) -> void:
 	obstacle_blocked_cells.erase(cell)
 	resource_blocked_cells.erase(cell)
-	set_cell_solid(cell, false)
+	_refresh_cell_solid(cell)
 
 func is_buildable_on_land(cell: Vector2i) -> bool:
 	return is_ground_cell(cell) and not is_water_cell(cell) and not is_blocked_cell(cell)
@@ -107,6 +110,7 @@ func reset_map_cells(map_region: Rect2i, ground_walkable_cells: Array[Vector2i],
 
 	for cell in water_surface_cells:
 		water_cells[cell] = true
+		set_cell_solid(cell, true)
 
 	for cell in obstacle_cells:
 		obstacle_blocked_cells[cell] = true

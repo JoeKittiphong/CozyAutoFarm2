@@ -30,11 +30,11 @@ amount = 1
 [resource]
 script = ExtResource("1")
 processor_type = "ANIMAL_FEED_FACTORY"
-label = "Feed Factory"
+label = "Animal Feed Factory"
 base_duration = 30.0
 ready_state_name = "FEED_READY"
-ready_texture_path = "res://assets/sprites/bakery_final.png"
-idle_texture_path = "res://assets/sprites/bakery_final.png"
+ready_texture_path = "res://assets/sprites/feed_factory.png"
+idle_texture_path = "res://assets/sprites/feed_factory.png"
 deliver_storage_pos = Vector2i(-2, -1)
 collect_storage_pos = Vector2i(2, -1)
 inputs = [SubResource("1"), SubResource("2"), SubResource("3")]

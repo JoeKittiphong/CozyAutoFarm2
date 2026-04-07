@@ -6,5 +6,5 @@
 script = ExtResource("1")
 item_id = "FISH"
 label = "Fish"
-icon_path = "uid://dxf5oa5oxt1sa"
+icon_path = "res://assets/sprites/fish_icon.png"
 sell_price = 6

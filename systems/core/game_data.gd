@@ -1,4 +1,4 @@
-﻿class_name GameData
+class_name GameData
 extends RefCounted
 
 const STORAGE_POS := Vector2i(-2, -1)
@@ -8,6 +8,8 @@ const MAX_UPGRADE_LEVEL := 5
 
 const SHOP_CATEGORY_SHOP := "SHOP"
 const SHOP_CATEGORY_WORKER_HOUSE := "WORKER_HOUSE"
+
+const TILE_SIZE := 128
 
 const ITEM_WHEAT := "WHEAT"
 const ITEM_TOMATO := "TOMATO"
@@ -424,7 +426,8 @@ static func get_max_workers(house_level: int) -> int:
 	return house_level * 2
 
 static func get_house_upgrade_price(house_level: int) -> int:
-	return int(floor(100.0 * pow(2.0, house_level - 1)))
+	# ปรับลดราคาเริ่มต้นจาก 100 เหลือ 35 (ประมาณ 1 ใน 3)
+	return int(floor(20.0 * pow(2.0, house_level - 1)))
 
 static func get_tile_upgrade_price(is_processor: bool, level: int) -> int:
 	var base := 25
