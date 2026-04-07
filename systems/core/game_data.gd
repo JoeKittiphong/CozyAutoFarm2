@@ -63,6 +63,9 @@ const JOB_GATHER_RESOURCE := "GATHER_RESOURCE"
 
 const WORK_MODE_AUTO := "AUTO"
 const WORK_MODE_ASSIGNED := "ASSIGNED"
+const WORKER_DOMAIN_FARM := "FARM"
+const WORKER_DOMAIN_GATHERING := "GATHERING"
+const WORKER_DOMAIN_FACTORY := "FACTORY"
 const WORKER_ROLE_CROP_CARE := "CROP_CARE"
 const WORKER_ROLE_PROCESSOR_DELIVERY := "PROCESSOR_DELIVERY"
 const WORKER_ROLE_PROCESSOR_COLLECT := "PROCESSOR_COLLECT"
@@ -231,6 +234,10 @@ static func get_sellable_item_order() -> Array[String]:
 	_ensure_resource_maps()
 	return _sellable_item_order.duplicate()
 
+static func get_targetable_item_order() -> Array[String]:
+	_ensure_resource_maps()
+	return _item_order.duplicate()
+
 static func get_blueprint_order() -> Array[String]:
 	_ensure_resource_maps()
 	return _blueprint_order.duplicate()
@@ -331,15 +338,81 @@ static func get_worker_mode_options() -> Array[Dictionary]:
 		{"id": WORK_MODE_ASSIGNED, "label": "Assigned"},
 	]
 
-static func get_worker_role_options() -> Array[Dictionary]:
+static func get_worker_domain_options() -> Array[Dictionary]:
 	return [
+		{"id": WORKER_DOMAIN_FARM, "label": "Farm House"},
+		{"id": WORKER_DOMAIN_GATHERING, "label": "Gathering House"},
+		{"id": WORKER_DOMAIN_FACTORY, "label": "Factory House"},
+	]
+
+static func get_worker_domain_label(domain_id: String) -> String:
+	for option in get_worker_domain_options():
+		if String(option.get("id", "")) == domain_id:
+			return String(option.get("label", domain_id))
+	return domain_id
+
+static func get_default_worker_role_for_domain(domain_id: String) -> String:
+	match domain_id:
+		WORKER_DOMAIN_FARM:
+			return WORKER_ROLE_CROP_CARE
+		WORKER_DOMAIN_GATHERING:
+			return WORKER_ROLE_RESOURCE_GATHERING
+		WORKER_DOMAIN_FACTORY:
+			return WORKER_ROLE_PROCESSOR_DELIVERY
+		_:
+			return WORKER_ROLE_CROP_CARE
+
+static func get_worker_roles_for_domain(domain_id: String) -> Array[String]:
+	match domain_id:
+		WORKER_DOMAIN_FARM:
+			return [WORKER_ROLE_CROP_CARE, WORKER_ROLE_ANIMAL_CARE]
+		WORKER_DOMAIN_GATHERING:
+			return [WORKER_ROLE_RESOURCE_GATHERING]
+		WORKER_DOMAIN_FACTORY:
+			return [WORKER_ROLE_PROCESSOR_DELIVERY, WORKER_ROLE_PROCESSOR_COLLECT]
+		_:
+			return [
+				WORKER_ROLE_CROP_CARE,
+				WORKER_ROLE_PROCESSOR_DELIVERY,
+				WORKER_ROLE_PROCESSOR_COLLECT,
+				WORKER_ROLE_ANIMAL_CARE,
+				WORKER_ROLE_RESOURCE_GATHERING,
+			]
+
+static func get_worker_role_options(domain_id: String = "") -> Array[Dictionary]:
+	var all_options: Array[Dictionary] = [
 		{"id": WORKER_ROLE_CROP_CARE, "label": "Crop Care"},
 		{"id": WORKER_ROLE_PROCESSOR_DELIVERY, "label": "Processor Delivery"},
 		{"id": WORKER_ROLE_PROCESSOR_COLLECT, "label": "Processor Collect"},
 		{"id": WORKER_ROLE_ANIMAL_CARE, "label": "Animal Care"},
 		{"id": WORKER_ROLE_RESOURCE_GATHERING, "label": "Resource Gathering"},
-		{"id": WORKER_ROLE_GENERAL_DELIVERY, "label": "General Delivery"},
 	]
+	if domain_id == "":
+		all_options.append({"id": WORKER_ROLE_GENERAL_DELIVERY, "label": "General Delivery"})
+		return all_options
+
+	var allowed_roles: Array[String] = get_worker_roles_for_domain(domain_id)
+	var filtered_options: Array[Dictionary] = []
+	for option in all_options:
+		if allowed_roles.has(String(option.get("id", ""))):
+			filtered_options.append(option)
+	return filtered_options
+
+static func is_worker_role_allowed_for_domain(domain_id: String, role_id: String) -> bool:
+	if domain_id == "":
+		return true
+	return get_worker_roles_for_domain(domain_id).has(role_id)
+
+static func is_job_type_allowed_for_worker_domain(domain_id: String, job_type: String) -> bool:
+	match domain_id:
+		WORKER_DOMAIN_FARM:
+			return job_type in [JOB_TILL, JOB_PLANT, JOB_WATER, JOB_HARVEST, JOB_FEED_ANIMAL, JOB_COLLECT_ANIMAL_PRODUCT, JOB_FETCH_ANIMAL]
+		WORKER_DOMAIN_GATHERING:
+			return job_type == JOB_GATHER_RESOURCE
+		WORKER_DOMAIN_FACTORY:
+			return job_type in [JOB_PROCESSOR_DELIVER, JOB_PROCESSOR_COLLECT]
+		_:
+			return true
 
 static func get_worker_role_label(role_id: String) -> String:
 	for option in get_worker_role_options():

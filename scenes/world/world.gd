@@ -19,6 +19,8 @@ const START_CAMERA_LEFT_UI_WIDTH := 360.0
 @onready var game_camera: GameCamera = $GameCamera
 @onready var highlight_rect: ColorRect = $HighlightRect
 @onready var house_marker: Marker2D = $HouseMarker
+@onready var gathering_house_marker: Marker2D = $GatheringHouseMarker
+@onready var factory_house_marker: Marker2D = $FactoryHouseMarker
 @onready var shop_marker: Marker2D = $ShopMarker
 @onready var worker_spawn_marker: Marker2D = $WorkerSpawnMarker
 @onready var animal_shop_spawn_marker: Marker2D = $AnimalShopSpawnMarker
@@ -62,15 +64,20 @@ func _scan_editor_map() -> void:
 		_resource_manager.register_from_layer(resource_layer)
 
 func _spawn_worker_system() -> void:
-	var house_pos: Vector2i = _marker_to_grid(house_marker)
-	_spawn_sprite(building_layer, house_pos, "res://assets/sprites/worker_house.png", Color.BROWN)
-	GridManager.set_cell_solid(house_pos, true)
+	_spawn_worker_house(GameData.WORKER_DOMAIN_FARM, house_marker, "res://assets/sprites/worker_house.png")
+	_spawn_worker_house(GameData.WORKER_DOMAIN_GATHERING, gathering_house_marker, "res://assets/sprites/gathering_house.png")
+	_spawn_worker_house(GameData.WORKER_DOMAIN_FACTORY, factory_house_marker, "res://assets/sprites/factory_house.png")
 
 	var shop_pos: Vector2i = _marker_to_grid(shop_marker)
 	_spawn_sprite(building_layer, shop_pos, "res://assets/sprites/shop_building.png", Color.BROWN)
 	GridManager.set_cell_solid(shop_pos, true)
 
-	_spawn_worker()
+	_spawn_worker(GameData.WORKER_DOMAIN_FARM)
+
+func _spawn_worker_house(domain_id: String, marker: Marker2D, texture_path: String) -> void:
+	var house_pos: Vector2i = _marker_to_grid(marker)
+	_spawn_sprite(building_layer, house_pos, texture_path, Color.BROWN)
+	GridManager.set_cell_solid(house_pos, true)
 
 func _on_viewport_size_changed() -> void:
 	call_deferred("_frame_start_camera")
@@ -122,6 +129,18 @@ func _get_start_world_rect() -> Rect2:
 			max_cell.x = max(max_cell.x, cell.x)
 			max_cell.y = max(max_cell.y, cell.y)
 
+	for marker in [gathering_house_marker, factory_house_marker]:
+		var extra_cell := _marker_to_grid(marker)
+		if not has_any:
+			has_any = true
+			min_cell = extra_cell
+			max_cell = extra_cell
+		else:
+			min_cell.x = min(min_cell.x, extra_cell.x)
+			min_cell.y = min(min_cell.y, extra_cell.y)
+			max_cell.x = max(max_cell.x, extra_cell.x)
+			max_cell.y = max(max_cell.y, extra_cell.y)
+
 	if not has_any:
 		return Rect2(Vector2.ZERO, Vector2(GameData.TILE_SIZE * 8, GameData.TILE_SIZE * 6))
 
@@ -131,10 +150,11 @@ func _get_start_world_rect() -> Rect2:
 	var bottom_right := _grid_to_world_top_left(max_cell + Vector2i.ONE)
 	return Rect2(top_left, bottom_right - top_left)
 
-func _spawn_worker() -> void:
+func _spawn_worker(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> void:
 	var worker_script = load("res://entities/worker/worker.gd")
 	var worker_node = worker_script.new()
-	worker_node.position = _get_safe_spawn_world_position(worker_spawn_marker)
+	worker_node.set_worker_domain(domain_id)
+	worker_node.position = _get_worker_spawn_world_position(domain_id)
 	actor_layer.add_child(worker_node)
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -184,9 +204,30 @@ func _get_safe_spawn_world_position(marker: Marker2D) -> Vector2:
 	var safe_cell: Vector2i = GridManager.find_nearest_walkable_land_cell(marker_cell)
 	return _grid_to_world_top_left(safe_cell)
 
-func _is_house_interaction_cell(grid_pos: Vector2i) -> bool:
-	var house_origin: Vector2i = _marker_to_grid(house_marker)
-	return grid_pos.x >= house_origin.x and grid_pos.x <= house_origin.x + 1 and grid_pos.y >= house_origin.y and grid_pos.y <= house_origin.y + 1
+func _get_house_domain_at_cell(grid_pos: Vector2i) -> String:
+	for house_data in _get_worker_house_data():
+		var origin: Vector2i = _marker_to_grid(house_data.marker)
+		if grid_pos.x >= origin.x and grid_pos.x <= origin.x + 1 and grid_pos.y >= origin.y and grid_pos.y <= origin.y + 1:
+			return house_data.domain
+	return ""
+
+func _get_worker_house_data() -> Array:
+	return [
+		{"domain": GameData.WORKER_DOMAIN_FARM, "marker": house_marker},
+		{"domain": GameData.WORKER_DOMAIN_GATHERING, "marker": gathering_house_marker},
+		{"domain": GameData.WORKER_DOMAIN_FACTORY, "marker": factory_house_marker},
+	]
+
+func _get_worker_spawn_world_position(domain_id: String) -> Vector2:
+	var house_marker_for_domain: Marker2D = house_marker
+	match domain_id:
+		GameData.WORKER_DOMAIN_GATHERING:
+			house_marker_for_domain = gathering_house_marker
+		GameData.WORKER_DOMAIN_FACTORY:
+			house_marker_for_domain = factory_house_marker
+		_:
+			house_marker_for_domain = house_marker
+	return _get_safe_spawn_world_position(house_marker_for_domain)
 
 func _is_shop_interaction_cell(grid_pos: Vector2i) -> bool:
 	return grid_pos == _marker_to_grid(shop_marker)
@@ -203,10 +244,11 @@ func _can_place_blueprint(grid_pos: Vector2i, blueprint_def: BlueprintDefinition
 	return GridManager.is_buildable_on_land(grid_pos)
 
 func _handle_left_click(grid_pos: Vector2i) -> void:
-	if _is_house_interaction_cell(grid_pos):
+	var house_domain: String = _get_house_domain_at_cell(grid_pos)
+	if house_domain != "":
 		var hud = get_node_or_null("HUD")
 		if hud:
-			hud.toggle_worker_house()
+			hud.toggle_worker_house(house_domain)
 		return
 
 	if _is_shop_interaction_cell(grid_pos):
@@ -376,7 +418,7 @@ func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2
 		sprite.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y)
 		if "crop" in texture_path or "sprout" in texture_path or "ready" in texture_path:
 			sprite.scale *= 0.6
-		if "worker_house" in texture_path:
+		if "_house" in texture_path:
 			sprite.scale *= 2.0
 			sprite.position -= Vector2(GameData.TILE_SIZE / 2.0, GameData.TILE_SIZE / 2.0)
 

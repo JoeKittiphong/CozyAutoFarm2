@@ -1,4 +1,4 @@
-﻿extends Node
+extends Node
 class_name ResourceManagerClass
 
 var _resources: Dictionary = {}
@@ -20,7 +20,7 @@ func _register_resource_cell(resource_layer: TileMapLayer, cell: Vector2i) -> vo
 	if resource_def == null:
 		return
 
-	var interaction_pos: Vector2i = GridManager.find_nearest_walkable_land_cell(cell, 8)
+	var interaction_pos: Vector2i = GridManager.find_nearest_cardinal_walkable_land_cell(cell, 8)
 	if not GridManager.is_walkable_land_cell(interaction_pos):
 		return
 
@@ -32,6 +32,7 @@ func _register_resource_cell(resource_layer: TileMapLayer, cell: Vector2i) -> vo
 		_job_manager.add_job(GameData.JOB_GATHER_RESOURCE, cell, {
 			"resource_type": resource_def.resource_id,
 			"interaction_pos": interaction_pos,
+			"target_item_type": resource_def.drop_item_def.item_id if resource_def.drop_item_def != null else "",
 		})
 
 func _resolve_resource_def(resource_layer: TileMapLayer, cell: Vector2i) -> WorldResourceDefinition:

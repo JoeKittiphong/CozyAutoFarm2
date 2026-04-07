@@ -47,6 +47,7 @@ func _process(delta: float) -> void:
 		if _job_manager:
 			_job_manager.add_job(GameData.JOB_COLLECT_ANIMAL_PRODUCT, home_pos, {
 				"item_type": animal_def.product_item_id,
+				"output_item_type": animal_def.product_item_id,
 				"group_name": animal_def.group_name,
 				"collect_method": "collect_product",
 			})
@@ -89,6 +90,7 @@ func _request_feed_job(animal_def: AnimalDefinition) -> void:
 		"fallback_item_type": animal_def.feed_item_id,
 		"fallback_amount": animal_def.feed_amount,
 		"feed_points": animal_def.premium_feed_points,
+		"output_item_type": animal_def.product_item_id,
 	})
 
 func _wander(delta: float, animal_def: AnimalDefinition) -> void:

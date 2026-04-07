@@ -2,6 +2,7 @@ extends Node
 class_name InventoryClass
 
 signal resources_updated
+signal targets_updated
 
 const ANIMAL_FEED_POINTS_PER_BAG := 40
 
@@ -15,22 +16,41 @@ var item_stock: Dictionary = {}
 var blueprint_stock: Dictionary = {}
 var blueprint_purchase_counts: Dictionary = {}
 var count_workers_bought: int = 0
+var worker_counts_by_domain: Dictionary = {}
+var item_targets: Dictionary = {}
 
 const MILL_TIME: float = 5.0
 
 func _ready() -> void:
 	for item_type in GameData.get_item_order():
 		item_stock[item_type] = 0
+		item_targets[item_type] = 0
 
 	for blueprint_type in GameData.get_blueprint_order():
 		blueprint_stock[blueprint_type] = 0
 		blueprint_purchase_counts[blueprint_type] = 0
+
+	for domain_option in GameData.get_worker_domain_options():
+		worker_counts_by_domain[String(domain_option.get("id", ""))] = 0
 
 func _process(_delta: float) -> void:
 	pass
 
 func get_item_stock(item_type: String) -> int:
 	return int(item_stock.get(item_type, 0))
+
+func get_item_target(item_type: String) -> int:
+	return int(item_targets.get(item_type, 0))
+
+func set_item_target(item_type: String, amount: int) -> void:
+	item_targets[item_type] = max(amount, 0)
+	targets_updated.emit()
+
+func get_item_shortage(item_type: String) -> int:
+	return max(get_item_target(item_type) - get_item_stock(item_type), 0)
+
+func is_item_below_target(item_type: String) -> bool:
+	return get_item_shortage(item_type) > 0
 
 func add_item(item_type: String, amount: int) -> void:
 	item_stock[item_type] = get_item_stock(item_type) + amount
@@ -104,7 +124,12 @@ func get_worker_price() -> int:
 func get_max_workers() -> int:
 	return GameData.get_max_workers(house_level)
 
-func buy_worker() -> bool:
+func get_worker_count(domain_id: String = "") -> int:
+	if domain_id == "":
+		return int(count_workers_bought)
+	return int(worker_counts_by_domain.get(domain_id, 0))
+
+func buy_worker(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> bool:
 	if count_workers_bought >= get_max_workers():
 		return false
 
@@ -114,6 +139,7 @@ func buy_worker() -> bool:
 
 	money -= price
 	count_workers_bought += 1
+	worker_counts_by_domain[domain_id] = get_worker_count(domain_id) + 1
 	resources_updated.emit()
 	return true
 

@@ -8,19 +8,36 @@ const DIRECTION_FRONT := "front"
 const DIRECTION_BACK := "back"
 const DIRECTION_LEFT := "left"
 const DIRECTION_RIGHT := "right"
-const DIRECTION_TEXTURE_PATHS := {
+const BASE_DIRECTION_TEXTURE_PATHS := {
 	DIRECTION_FRONT: "res://assets/sprites/worker_front.png",
 	DIRECTION_BACK: "res://assets/sprites/worker_back.png",
 	DIRECTION_LEFT: "res://assets/sprites/worker_left.png",
 	DIRECTION_RIGHT: "res://assets/sprites/worker_right.png",
 }
+const DOMAIN_DIRECTION_TEXTURE_PATHS := {
+	GameData.WORKER_DOMAIN_FARM: {
+		DIRECTION_FRONT: "res://assets/sprites/worker_front.png",
+		DIRECTION_BACK: "res://assets/sprites/worker_back.png",
+		DIRECTION_LEFT: "res://assets/sprites/worker_left.png",
+		DIRECTION_RIGHT: "res://assets/sprites/worker_right.png",
+	},
+	GameData.WORKER_DOMAIN_GATHERING: {
+		DIRECTION_FRONT: "res://assets/sprites/worker_gathering_front.png",
+		DIRECTION_BACK: "res://assets/sprites/worker_gathering_back.png",
+		DIRECTION_LEFT: "res://assets/sprites/worker_gathering_left.png",
+		DIRECTION_RIGHT: "res://assets/sprites/worker_gathering_right.png",
+	},
+	GameData.WORKER_DOMAIN_FACTORY: {
+		DIRECTION_FRONT: "res://assets/sprites/worker_factory_front.png",
+		DIRECTION_BACK: "res://assets/sprites/worker_factory_back.png",
+		DIRECTION_LEFT: "res://assets/sprites/worker_factory_left.png",
+		DIRECTION_RIGHT: "res://assets/sprites/worker_factory_right.png",
+	},
+}
 static var _next_worker_id: int = 1
 
 var worker_id: int = 0
-var work_mode: String = GameData.WORK_MODE_AUTO
-var assigned_role: String = GameData.WORKER_ROLE_CROP_CARE
-var assigned_target_id: String = ""
-var allow_fallback_jobs: bool = true
+var worker_domain: String = GameData.WORKER_DOMAIN_FARM
 
 var current_path: Array[Vector2i] = []
 var current_job: Dictionary = {}
@@ -97,8 +114,11 @@ func _process(delta: float) -> void:
 
 func _load_directional_textures() -> void:
 	_worker_direction_textures.clear()
-	for direction in DIRECTION_TEXTURE_PATHS.keys():
-		var tex = ResourceLoader.load(String(DIRECTION_TEXTURE_PATHS[direction]))
+	var texture_paths: Dictionary = _get_direction_texture_paths()
+	for direction in BASE_DIRECTION_TEXTURE_PATHS.keys():
+		var tex = ResourceLoader.load(String(texture_paths.get(direction, BASE_DIRECTION_TEXTURE_PATHS[direction])))
+		if tex == null:
+			tex = ResourceLoader.load(String(BASE_DIRECTION_TEXTURE_PATHS[direction]))
 		if tex != null:
 			_worker_direction_textures[direction] = tex
 
@@ -108,11 +128,20 @@ func _load_directional_textures() -> void:
 		fallback.height = 80
 		fallback.fill_to = Vector2(1, 1)
 		var grad = Gradient.new()
-		grad.set_color(0, Color.GOLD)
-		grad.set_color(1, Color.ORANGE)
+		var domain_colors: Dictionary = {
+			GameData.WORKER_DOMAIN_FARM: [Color(0.93, 0.78, 0.18), Color(0.87, 0.46, 0.12)],
+			GameData.WORKER_DOMAIN_GATHERING: [Color(0.38, 0.78, 0.34), Color(0.12, 0.47, 0.16)],
+			GameData.WORKER_DOMAIN_FACTORY: [Color(0.45, 0.72, 0.95), Color(0.22, 0.35, 0.72)],
+		}
+		var color_pair: Array = domain_colors.get(worker_domain, [Color.GOLD, Color.ORANGE])
+		grad.set_color(0, color_pair[0])
+		grad.set_color(1, color_pair[1])
 		fallback.gradient = grad
-		for direction in DIRECTION_TEXTURE_PATHS.keys():
+		for direction in BASE_DIRECTION_TEXTURE_PATHS.keys():
 			_worker_direction_textures[direction] = fallback
+
+func _get_direction_texture_paths() -> Dictionary:
+	return DOMAIN_DIRECTION_TEXTURE_PATHS.get(worker_domain, BASE_DIRECTION_TEXTURE_PATHS)
 
 func _apply_direction_texture(direction: String) -> void:
 	var tex = _worker_direction_textures.get(direction, _worker_direction_textures.get(DIRECTION_FRONT, null))
@@ -136,35 +165,38 @@ func _update_direction_from_vector(dir: Vector2) -> void:
 		_apply_direction_texture(next_direction)
 
 func uses_auto_job_selection() -> bool:
-	return work_mode != GameData.WORK_MODE_ASSIGNED
+	return true
 
 func can_help_when_idle() -> bool:
-	return work_mode == GameData.WORK_MODE_ASSIGNED and allow_fallback_jobs
+	return false
 
-func set_assignment(mode: String, role: String, target_id: String, allow_fallback: bool) -> void:
-	work_mode = mode
-	assigned_role = role
-	assigned_target_id = target_id
-	allow_fallback_jobs = allow_fallback
+func get_worker_domain() -> String:
+	return worker_domain
+
+func set_assignment(_mode: String, _role: String, _target_id: String, _allow_fallback: bool) -> void:
+	# Assignment system is disabled. Workers now auto-manage jobs within their house domain.
+	pass
+
+func set_worker_domain(domain_id: String) -> void:
+	worker_domain = domain_id if domain_id != "" else GameData.WORKER_DOMAIN_FARM
+	if is_node_ready():
+		_load_directional_textures()
+		_apply_direction_texture(_current_direction)
 
 func get_assignment_data() -> Dictionary:
 	return {
-		"mode": work_mode,
-		"role": assigned_role,
-		"target_id": assigned_target_id,
-		"allow_fallback": allow_fallback_jobs,
+		"mode": GameData.WORK_MODE_AUTO,
+		"role": GameData.get_default_worker_role_for_domain(worker_domain),
+		"target_id": "",
+		"allow_fallback": false,
 	}
 
 func get_display_name() -> String:
 	return "Worker #%d" % worker_id
 
 func get_assignment_summary() -> String:
-	if uses_auto_job_selection():
-		return "Auto"
-	var role_label: String = GameData.get_worker_role_label(assigned_role)
-	var target_label: String = GameData.get_worker_target_label(assigned_role, assigned_target_id)
-	var fallback_label := "Help" if allow_fallback_jobs else "Strict"
-	return "%s / %s / %s" % [role_label, target_label, fallback_label]
+	var domain_label: String = GameData.get_worker_domain_label(worker_domain)
+	return "%s / Auto" % domain_label
 
 func get_current_status() -> String:
 	if not current_job.is_empty():
@@ -173,50 +205,14 @@ func get_current_status() -> String:
 		return "Delivering"
 	return "Idle"
 
-func matches_job(job: Dictionary) -> bool:
-	if uses_auto_job_selection():
-		return true
-
+func matches_domain_job(job: Dictionary) -> bool:
 	var job_type: String = String(job.get("type", ""))
-	match assigned_role:
-		GameData.WORKER_ROLE_CROP_CARE:
-			if job_type not in [GameData.JOB_TILL, GameData.JOB_PLANT, GameData.JOB_WATER, GameData.JOB_HARVEST]:
-				return false
-			if assigned_target_id == "":
-				return true
-			var job_crop_type: String = String(job.get("item_type", job.get("crop_type", _farm_manager.get_tile_type(job.target_pos))))
-			return job_crop_type == assigned_target_id
-		GameData.WORKER_ROLE_PROCESSOR_DELIVERY:
-			if job_type != GameData.JOB_PROCESSOR_DELIVER:
-				return false
-			if assigned_target_id == "":
-				return true
-			return _farm_manager.get_processor_type(job.target_pos) == assigned_target_id
-		GameData.WORKER_ROLE_PROCESSOR_COLLECT:
-			if job_type != GameData.JOB_PROCESSOR_COLLECT:
-				return false
-			if assigned_target_id == "":
-				return true
-			return _farm_manager.get_processor_type(job.target_pos) == assigned_target_id
-		GameData.WORKER_ROLE_ANIMAL_CARE:
-			if job_type not in [GameData.JOB_FEED_ANIMAL, GameData.JOB_COLLECT_ANIMAL_PRODUCT, GameData.JOB_FETCH_ANIMAL]:
-				return false
-			if assigned_target_id == "":
-				return true
-			var animal_def: AnimalDefinition = GameData.get_animal_def(assigned_target_id)
-			if animal_def == null:
-				return false
-			return String(job.get("group_name", animal_def.group_name)) == animal_def.group_name or String(job.get("animal_type", assigned_target_id)) == assigned_target_id
-		GameData.WORKER_ROLE_RESOURCE_GATHERING:
-			if job_type != GameData.JOB_GATHER_RESOURCE:
-				return false
-			if assigned_target_id == "":
-				return true
-			return String(job.get("resource_type", "")) == assigned_target_id
-		GameData.WORKER_ROLE_GENERAL_DELIVERY:
-			return job_type == GameData.JOB_DELIVER
-		_:
-			return true
+	return GameData.is_job_type_allowed_for_worker_domain(worker_domain, job_type)
+
+func matches_job(job: Dictionary) -> bool:
+	if not matches_domain_job(job):
+		return false
+	return true
 
 func _is_complex_job(job: Dictionary) -> bool:
 	var job_type: String = String(job.get("type", ""))

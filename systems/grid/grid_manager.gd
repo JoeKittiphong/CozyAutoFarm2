@@ -87,6 +87,23 @@ func find_nearest_walkable_land_cell(origin: Vector2i, max_radius: int = 8) -> V
 
 	return origin
 
+func find_nearest_cardinal_walkable_land_cell(origin: Vector2i, max_radius: int = 8) -> Vector2i:
+	if is_walkable_land_cell(origin):
+		return origin
+
+	for radius in range(1, max_radius + 1):
+		var candidates: Array[Vector2i] = [
+			Vector2i(origin.x, origin.y - radius),
+			Vector2i(origin.x + radius, origin.y),
+			Vector2i(origin.x, origin.y + radius),
+			Vector2i(origin.x - radius, origin.y),
+		]
+		for candidate in candidates:
+			if is_walkable_land_cell(candidate):
+				return candidate
+
+	return origin
+
 func reset_map_cells(map_region: Rect2i, ground_walkable_cells: Array[Vector2i], water_surface_cells: Array[Vector2i] = [], obstacle_cells: Array[Vector2i] = [], resource_cells: Array[Vector2i] = []) -> void:
 	if grid == null:
 		return

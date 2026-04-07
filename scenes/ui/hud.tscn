@@ -88,6 +88,11 @@ custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 text = "Warehouse"
 
+[node name="TargetsButton" type="Button" parent="TopBar/BarContent" unique_id=211653425]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+text = "Targets"
+
 [node name="WorkersButton" type="Button" parent="TopBar/BarContent" unique_id=1104079984]
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
@@ -143,6 +148,49 @@ theme_override_constants/separation = 10
 script = ExtResource("3_reslist")
 
 [node name="CloseButton" type="Button" parent="SidePanels/WarehousePanel/Content" unique_id=1062904547]
+layout_mode = 2
+text = "Close"
+
+[node name="TargetsPanel" type="PanelContainer" parent="SidePanels" unique_id=2085611387]
+visible = false
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -360.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
+
+[node name="Content" type="VBoxContainer" parent="SidePanels/TargetsPanel" unique_id=485409844]
+layout_mode = 2
+theme_override_constants/separation = 15
+
+[node name="Title" type="Label" parent="SidePanels/TargetsPanel/Content" unique_id=1935788329]
+layout_mode = 2
+text = "--- TARGETS ---"
+horizontal_alignment = 1
+
+[node name="InfoLabel" type="Label" parent="SidePanels/TargetsPanel/Content" unique_id=1935788330]
+layout_mode = 2
+text = "Set desired stock. Workers will prioritize items below target."
+horizontal_alignment = 1
+autowrap_mode = 2
+
+[node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/TargetsPanel/Content" unique_id=2090072161]
+custom_minimum_size = Vector2(0, 250)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="TargetList" type="VBoxContainer" parent="SidePanels/TargetsPanel/Content/ScrollContainer" unique_id=1632860724]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="CloseButton" type="Button" parent="SidePanels/TargetsPanel/Content" unique_id=1062904548]
 layout_mode = 2
 text = "Close"
 

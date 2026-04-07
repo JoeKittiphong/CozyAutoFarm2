@@ -10,23 +10,33 @@ var worker_assignment_buttons: Dictionary = {}
 var _warehouse_tween: Tween
 var _hide_warehouse_after_tween: bool = false
 var _selected_worker: FarmWorker = null
+var _current_worker_house_domain: String = GameData.WORKER_DOMAIN_FARM
+var _target_controls: Dictionary = {}
 
 @onready var _resources_container: HBoxContainer = $TopBar/BarContent/ResourcesContainer
 @onready var _warehouse_btn: Button = $TopBar/BarContent/WarehouseButton
+@onready var _targets_btn: Button = $TopBar/BarContent/TargetsButton
 @onready var _workers_btn: Button = $TopBar/BarContent/WorkersButton
 @onready var mill_btn: Button = $TopBar/BarContent/MillButton
 @onready var warehouse_panel: PanelContainer = $SidePanels/WarehousePanel
+@onready var targets_panel: PanelContainer = $SidePanels/TargetsPanel
 @onready var worker_manage_panel: PanelContainer = $SidePanels/WorkerManagePanel
 @onready var shop_panel: PanelContainer = $SidePanels/ShopPanel
 @onready var worker_panel: PanelContainer = $SidePanels/WorkerPanel
 @onready var upgrade_panel: PanelContainer = $SidePanels/UpgradePanel
 @onready var _warehouse_close_btn: Button = $SidePanels/WarehousePanel/Content/CloseButton
 @onready var _warehouse_resource_list: GameResourceListComponent = $SidePanels/WarehousePanel/Content/ScrollContainer/ResourceList
+@onready var _targets_close_btn: Button = $SidePanels/TargetsPanel/Content/CloseButton
+@onready var _target_list: VBoxContainer = $SidePanels/TargetsPanel/Content/ScrollContainer/TargetList
 @onready var _worker_manage_close_btn: Button = $SidePanels/WorkerManagePanel/Content/CloseButton
 @onready var _worker_manage_list: VBoxContainer = $SidePanels/WorkerManagePanel/Content/WorkerScroll/WorkerList
 @onready var _worker_manage_selected_label: Label = $SidePanels/WorkerManagePanel/Content/SelectedWorkerLabel
+@onready var _worker_manage_info_label: Label = $SidePanels/WorkerManagePanel/Content/InfoLabel
+@onready var _worker_manage_mode_label: Label = $SidePanels/WorkerManagePanel/Content/ModeLabel
 @onready var _worker_manage_mode: OptionButton = $SidePanels/WorkerManagePanel/Content/ModeOption
+@onready var _worker_manage_role_label: Label = $SidePanels/WorkerManagePanel/Content/RoleLabel
 @onready var _worker_manage_role: OptionButton = $SidePanels/WorkerManagePanel/Content/RoleOption
+@onready var _worker_manage_target_label: Label = $SidePanels/WorkerManagePanel/Content/TargetLabel
 @onready var _worker_manage_target: OptionButton = $SidePanels/WorkerManagePanel/Content/TargetOption
 @onready var _worker_manage_fallback: CheckButton = $SidePanels/WorkerManagePanel/Content/FallbackCheck
 @onready var _worker_manage_apply_btn: Button = $SidePanels/WorkerManagePanel/Content/ApplyButton
@@ -35,6 +45,7 @@ var _selected_worker: FarmWorker = null
 @onready var _seed_blueprint_list: GameActionListComponent = $SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent/SeedBlueprintList
 @onready var _building_blueprint_list: GameActionListComponent = $SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent/BuildingBlueprintList
 @onready var _animal_list: GameActionListComponent = $SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent/AnimalList
+@onready var _worker_panel_title: Label = $SidePanels/WorkerPanel/Content/Title
 @onready var hire_worker_btn: Button = $SidePanels/WorkerPanel/Content/HireButton
 @onready var upgrade_house_btn: Button = $SidePanels/WorkerPanel/Content/UpgradeHouseButton
 @onready var upgrade_info_label: Label = $SidePanels/UpgradePanel/Content/InfoLabel
@@ -47,12 +58,14 @@ var _selected_worker: FarmWorker = null
 
 func _ready() -> void:
 	_warehouse_btn.pressed.connect(_toggle_warehouse_panel)
+	_targets_btn.pressed.connect(_toggle_targets_panel)
 	_workers_btn.pressed.connect(_toggle_worker_management)
 	mill_btn.pressed.connect(_on_mill_pressed)
 	hire_worker_btn.pressed.connect(_on_hire_pressed)
 	upgrade_house_btn.pressed.connect(_upgrade_house)
 	upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	_warehouse_close_btn.pressed.connect(_close_warehouse_panel)
+	_targets_close_btn.pressed.connect(_close_targets_panel)
 	_worker_manage_close_btn.pressed.connect(_close_worker_management)
 	_worker_manage_apply_btn.pressed.connect(_apply_worker_assignment)
 	_worker_manage_reset_btn.pressed.connect(_reset_worker_assignment)
@@ -68,11 +81,14 @@ func _ready() -> void:
 
 	_setup_top_bar()
 	_setup_dynamic_lists()
+	_setup_target_controls()
 	_setup_worker_management_controls()
 	warehouse_panel.position.x = 380.0
 
 	if not InventoryManager.resources_updated.is_connected(_on_resources_updated):
 		InventoryManager.resources_updated.connect(_on_resources_updated)
+	if not InventoryManager.targets_updated.is_connected(_on_targets_updated):
+		InventoryManager.targets_updated.connect(_on_targets_updated)
 	_on_resources_updated()
 
 func _setup_top_bar() -> void:
@@ -96,11 +112,56 @@ func _setup_dynamic_lists() -> void:
 	blueprint_buttons.merge(_seed_blueprint_list.get_buttons(), true)
 	blueprint_buttons.merge(_building_blueprint_list.get_buttons(), true)
 
+func _setup_target_controls() -> void:
+	for child in _target_list.get_children():
+		child.queue_free()
+	_target_controls.clear()
+
+	for item_type in GameData.get_targetable_item_order():
+		var item_def: ItemDefinition = GameData.get_item_def(item_type)
+		if item_def == null:
+			continue
+		var row := HBoxContainer.new()
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(36, 36)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.tooltip_text = item_def.label
+		icon.texture = ResourceLoader.load(item_def.icon_path)
+
+		var stock_label := Label.new()
+		stock_label.text = "0 / 0"
+		stock_label.custom_minimum_size = Vector2(90, 0)
+		stock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+		var spinbox := SpinBox.new()
+		spinbox.min_value = 0
+		spinbox.max_value = 999
+		spinbox.step = 1
+		spinbox.rounded = true
+		spinbox.custom_minimum_size = Vector2(90, 0)
+		spinbox.value_changed.connect(_on_target_value_changed.bind(item_type))
+
+		row.add_child(icon)
+		row.add_child(stock_label)
+		row.add_child(spinbox)
+		_target_list.add_child(row)
+		_target_controls[item_type] = {
+			"stock_label": stock_label,
+			"spinbox": spinbox,
+		}
+
+	_on_targets_updated()
+
 func _setup_worker_management_controls() -> void:
-	_populate_option_button(_worker_manage_mode, GameData.get_worker_mode_options(), GameData.WORK_MODE_AUTO)
-	_populate_option_button(_worker_manage_role, GameData.get_worker_role_options(), GameData.WORKER_ROLE_CROP_CARE)
-	_refresh_worker_target_options("", true)
+	_worker_manage_info_label.text = "Workers now act automatically by house.\nUse the Targets panel to set stock goals when you want them to focus production."
+	for node in [_worker_manage_mode_label, _worker_manage_mode, _worker_manage_role_label, _worker_manage_role, _worker_manage_target_label, _worker_manage_target, _worker_manage_fallback, _worker_manage_apply_btn, _worker_manage_reset_btn]:
+		node.visible = false
 	_refresh_worker_management_panel()
+	_refresh_worker_house_panel()
 
 func open_upgrade_ui(cell: Vector2i) -> void:
 	var state = FarmManager.get_tile_state(cell)
@@ -118,6 +179,7 @@ func open_upgrade_ui(cell: Vector2i) -> void:
 		current_upgrade_cell = cell
 		upgrade_panel.visible = true
 		shop_panel.visible = false
+		targets_panel.visible = false
 		worker_panel.visible = false
 		worker_manage_panel.visible = false
 		_close_warehouse_panel(false)
@@ -130,15 +192,27 @@ func _on_upgrade_pressed() -> void:
 func toggle_shop() -> void:
 	shop_panel.visible = not shop_panel.visible
 	if shop_panel.visible:
+		targets_panel.visible = false
 		worker_panel.visible = false
 		worker_manage_panel.visible = false
 		upgrade_panel.visible = false
 		_close_warehouse_panel(false)
 
-func toggle_worker_house() -> void:
+func toggle_worker_house(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> void:
+	var switched_domain: bool = _current_worker_house_domain != domain_id
+	_current_worker_house_domain = domain_id
+	_refresh_worker_house_panel()
+	if switched_domain and worker_panel.visible:
+		shop_panel.visible = false
+		targets_panel.visible = false
+		worker_manage_panel.visible = false
+		upgrade_panel.visible = false
+		_close_warehouse_panel(false)
+		return
 	worker_panel.visible = not worker_panel.visible
 	if worker_panel.visible:
 		shop_panel.visible = false
+		targets_panel.visible = false
 		worker_manage_panel.visible = false
 		upgrade_panel.visible = false
 		_close_warehouse_panel(false)
@@ -152,6 +226,7 @@ func _toggle_warehouse_panel() -> void:
 func _open_warehouse_panel() -> void:
 	_warehouse_resource_list.repopulate()
 	shop_panel.visible = false
+	targets_panel.visible = false
 	worker_panel.visible = false
 	worker_manage_panel.visible = false
 	upgrade_panel.visible = false
@@ -182,6 +257,24 @@ func _on_warehouse_tween_finished() -> void:
 		warehouse_panel.position.x = 380.0
 	_hide_warehouse_after_tween = false
 
+func _toggle_targets_panel() -> void:
+	if targets_panel.visible:
+		_close_targets_panel()
+	else:
+		_open_targets_panel()
+
+func _open_targets_panel() -> void:
+	shop_panel.visible = false
+	worker_panel.visible = false
+	worker_manage_panel.visible = false
+	upgrade_panel.visible = false
+	_close_warehouse_panel(false)
+	targets_panel.visible = true
+	_on_targets_updated()
+
+func _close_targets_panel() -> void:
+	targets_panel.visible = false
+
 func _toggle_worker_management() -> void:
 	if worker_manage_panel.visible:
 		_close_worker_management()
@@ -190,6 +283,7 @@ func _toggle_worker_management() -> void:
 
 func _open_worker_management() -> void:
 	shop_panel.visible = false
+	targets_panel.visible = false
 	worker_panel.visible = false
 	upgrade_panel.visible = false
 	_close_warehouse_panel(false)
@@ -245,7 +339,7 @@ func _select_worker(worker: FarmWorker) -> void:
 	_selected_worker = worker
 	_update_worker_assignment_editor()
 
-func _update_worker_assignment_editor(refresh_options: bool = true) -> void:
+func _update_worker_assignment_editor(_refresh_options: bool = true) -> void:
 	for worker_id in worker_assignment_buttons.keys():
 		var btn: Button = worker_assignment_buttons[worker_id]
 		btn.disabled = false
@@ -253,25 +347,13 @@ func _update_worker_assignment_editor(refresh_options: bool = true) -> void:
 	if _selected_worker == null or not is_instance_valid(_selected_worker) or _selected_worker.get_parent() == null:
 		_selected_worker = null
 		_worker_manage_selected_label.text = "No worker selected"
-		_worker_manage_apply_btn.disabled = true
-		_worker_manage_reset_btn.disabled = true
 		return
 
 	var selected_button: Button = worker_assignment_buttons.get(_selected_worker.worker_id, null)
 	if selected_button != null:
 		selected_button.disabled = true
 
-	var data: Dictionary = _selected_worker.get_assignment_data()
-	_worker_manage_selected_label.text = "%s\n%s" % [_selected_worker.get_display_name(), _selected_worker.get_current_status()]
-	if refresh_options:
-		_populate_option_button(_worker_manage_mode, GameData.get_worker_mode_options(), String(data.get("mode", GameData.WORK_MODE_AUTO)))
-		_populate_option_button(_worker_manage_role, GameData.get_worker_role_options(), String(data.get("role", GameData.WORKER_ROLE_CROP_CARE)))
-		_refresh_worker_target_options(String(data.get("target_id", "")), false)
-		_worker_manage_fallback.button_pressed = bool(data.get("allow_fallback", true))
-	else:
-		_worker_manage_fallback.button_pressed = bool(data.get("allow_fallback", true))
-	_worker_manage_apply_btn.disabled = false
-	_worker_manage_reset_btn.disabled = false
+	_worker_manage_selected_label.text = "%s\n%s\n%s" % [_selected_worker.get_display_name(), _selected_worker.get_assignment_summary(), _selected_worker.get_current_status()]
 	_update_worker_assignment_editor_state()
 
 func _populate_option_button(button: OptionButton, options: Array[Dictionary], selected_id: String) -> void:
@@ -287,6 +369,9 @@ func _populate_option_button(button: OptionButton, options: Array[Dictionary], s
 
 func _refresh_worker_target_options(selected_target_id: String, from_role_change: bool) -> void:
 	var role_id: String = _get_selected_option_metadata(_worker_manage_role)
+	if _selected_worker != null and is_instance_valid(_selected_worker):
+		if not GameData.is_worker_role_allowed_for_domain(_selected_worker.get_worker_domain(), role_id):
+			role_id = GameData.get_default_worker_role_for_domain(_selected_worker.get_worker_domain())
 	var options: Array[Dictionary] = GameData.get_worker_target_options(role_id)
 	var target_id := selected_target_id
 	if from_role_change and not options.is_empty():
@@ -307,31 +392,13 @@ func _on_worker_role_changed(_index: int) -> void:
 	_refresh_worker_target_options("", true)
 
 func _update_worker_assignment_editor_state() -> void:
-	var is_assigned := _get_selected_option_metadata(_worker_manage_mode) == GameData.WORK_MODE_ASSIGNED
-	_worker_manage_role.disabled = not is_assigned
-	_worker_manage_target.disabled = not is_assigned
-	_worker_manage_fallback.disabled = not is_assigned
+	return
 
 func _apply_worker_assignment() -> void:
-	if _selected_worker == null or not is_instance_valid(_selected_worker) or _selected_worker.get_parent() == null:
-		_selected_worker = null
-		_update_worker_assignment_editor()
-		return
-	_selected_worker.set_assignment(
-		_get_selected_option_metadata(_worker_manage_mode),
-		_get_selected_option_metadata(_worker_manage_role),
-		_get_selected_option_metadata(_worker_manage_target),
-		_worker_manage_fallback.button_pressed
-	)
-	_refresh_worker_management_panel()
+	return
 
 func _reset_worker_assignment() -> void:
-	if _selected_worker == null or not is_instance_valid(_selected_worker) or _selected_worker.get_parent() == null:
-		_selected_worker = null
-		_update_worker_assignment_editor()
-		return
-	_selected_worker.set_assignment(GameData.WORK_MODE_AUTO, GameData.WORKER_ROLE_CROP_CARE, "", true)
-	_refresh_worker_management_panel()
+	return
 
 func _get_workers_sorted() -> Array[FarmWorker]:
 	var result: Array[FarmWorker] = []
@@ -342,12 +409,50 @@ func _get_workers_sorted() -> Array[FarmWorker]:
 	return result
 
 func _on_hire_pressed() -> void:
-	if InventoryManager.buy_worker():
+	if InventoryManager.buy_worker(_current_worker_house_domain):
 		if _world == null:
 			_world = get_node_or_null("/root/World")
 		if _world:
-			_world._spawn_worker()
+			_world._spawn_worker(_current_worker_house_domain)
+		_refresh_worker_house_panel()
 		_refresh_worker_management_panel()
+
+func _refresh_worker_house_panel() -> void:
+	var domain_label: String = GameData.get_worker_domain_label(_current_worker_house_domain)
+	_worker_panel_title.text = "--- %s ---" % domain_label.to_upper()
+	var domain_worker_count: int = InventoryManager.get_worker_count(_current_worker_house_domain)
+	var worker_price: int = InventoryManager.get_worker_price()
+	hire_worker_btn.text = "Hire %s (%d/%d)\n-%d Coins" % [
+		domain_label.replace(" House", ""),
+		domain_worker_count,
+		InventoryManager.get_max_workers(),
+		worker_price,
+	]
+	hire_worker_btn.disabled = InventoryManager.count_workers_bought >= InventoryManager.get_max_workers() or InventoryManager.money < worker_price
+	var house_price: int = InventoryManager.get_house_upgrade_price()
+	if InventoryManager.house_level < GameData.MAX_UPGRADE_LEVEL:
+		upgrade_house_btn.text = "Upgrade Housing (Lv %d)\n-%d Coins" % [InventoryManager.house_level, house_price]
+		upgrade_house_btn.disabled = InventoryManager.money < house_price
+	else:
+		upgrade_house_btn.text = "Upgrade Housing (MAX Lv %d)" % GameData.MAX_UPGRADE_LEVEL
+		upgrade_house_btn.disabled = true
+
+func _on_target_value_changed(value: float, item_type: String) -> void:
+	InventoryManager.set_item_target(item_type, int(value))
+
+func _on_targets_updated() -> void:
+	for item_type in _target_controls.keys():
+		var controls: Dictionary = _target_controls[item_type]
+		var stock_label: Label = controls.get("stock_label", null)
+		var spinbox: SpinBox = controls.get("spinbox", null)
+		if stock_label != null:
+			stock_label.text = "%d / %d" % [InventoryManager.get_item_stock(item_type), InventoryManager.get_item_target(item_type)]
+			if InventoryManager.is_item_below_target(item_type):
+				stock_label.modulate = Color(1.0, 0.8, 0.35, 1.0)
+			else:
+				stock_label.modulate = Color(0.8, 1.0, 0.8, 1.0)
+		if spinbox != null and int(spinbox.value) != InventoryManager.get_item_target(item_type):
+			spinbox.value = InventoryManager.get_item_target(item_type)
 
 func _close_shop() -> void:
 	shop_panel.visible = false
@@ -382,20 +487,8 @@ func _on_mill_pressed() -> void:
 	mill_btn.text = "Mill: PAUSED" if InventoryManager.mill_paused else "Mill: ON"
 
 func _on_resources_updated() -> void:
-	hire_worker_btn.text = "Hire Worker (%d/%d)\n-%d Coins" % [
-		InventoryManager.count_workers_bought,
-		InventoryManager.get_max_workers(),
-		InventoryManager.get_worker_price()
-	]
-	hire_worker_btn.disabled = InventoryManager.count_workers_bought >= InventoryManager.get_max_workers()
-
-	var house_price: int = InventoryManager.get_house_upgrade_price()
-	if InventoryManager.house_level < GameData.MAX_UPGRADE_LEVEL:
-		upgrade_house_btn.text = "Upgrade House (Lv %d)\n-%d Coins" % [InventoryManager.house_level, house_price]
-		upgrade_house_btn.disabled = InventoryManager.money < house_price
-	else:
-		upgrade_house_btn.text = "Upgrade House (MAX Lv %d)" % GameData.MAX_UPGRADE_LEVEL
-		upgrade_house_btn.disabled = true
+	_refresh_worker_house_panel()
+	_on_targets_updated()
 
 	mill_btn.text = "Mill: PAUSED" if InventoryManager.mill_paused else "Mill: ON"
 

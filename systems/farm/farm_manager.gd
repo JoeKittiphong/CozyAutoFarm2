@@ -58,6 +58,7 @@ func _process_processor(cell: Vector2i, delta: float) -> void:
 			var output_def: Dictionary = _get_primary_output(data)
 			_job_manager.add_job(GameData.JOB_PROCESSOR_COLLECT, cell, {
 				"item_type": String(output_def.get("item", "")),
+				"output_item_type": String(output_def.get("item", "")),
 				"amount": int(output_def.get("amount", 1)),
 				"storage_pos": _get_safe_storage_pos(Vector2i(data.get("collect_storage_pos", GameData.PROCESSING_STORAGE_POS))),
 				"interaction_pos": _get_processor_interaction_pos(cell),
@@ -212,8 +213,10 @@ func _request_processor_ingredients(cell: Vector2i) -> void:
 		if _inventory_manager.get_item_stock(item_type) < 1:
 			continue
 
+		var primary_output: Dictionary = _get_primary_output(data)
 		_job_manager.add_job(GameData.JOB_PROCESSOR_DELIVER, cell, {
 			"item_type": item_type,
+			"output_item_type": String(primary_output.get("item", "")),
 			"amount": 1,
 			"storage_pos": storage_pos,
 			"interaction_pos": interaction_pos,
