@@ -125,6 +125,7 @@ offset_top = 10.0
 offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 0
+grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
 
 [node name="Content" type="VBoxContainer" parent="SidePanels/WarehousePanel" unique_id=485409843]
@@ -163,6 +164,7 @@ offset_top = 10.0
 offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 0
+grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
 
 [node name="Content" type="VBoxContainer" parent="SidePanels/TargetsPanel" unique_id=485409844]
@@ -173,12 +175,6 @@ theme_override_constants/separation = 15
 layout_mode = 2
 text = "--- TARGETS ---"
 horizontal_alignment = 1
-
-[node name="InfoLabel" type="Label" parent="SidePanels/TargetsPanel/Content" unique_id=1935788330]
-layout_mode = 2
-text = "Set desired stock. Workers will prioritize items below target."
-horizontal_alignment = 1
-autowrap_mode = 2
 
 [node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/TargetsPanel/Content" unique_id=2090072161]
 custom_minimum_size = Vector2(0, 250)
@@ -218,12 +214,6 @@ theme_override_constants/separation = 12
 layout_mode = 2
 text = "--- WORKER MANAGEMENT ---"
 horizontal_alignment = 1
-
-[node name="InfoLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content" unique_id=1676956656]
-layout_mode = 2
-text = "Select a worker and assign a focus."
-horizontal_alignment = 1
-autowrap_mode = 2
 
 [node name="WorkerScroll" type="ScrollContainer" parent="SidePanels/WorkerManagePanel/Content" unique_id=1946156383]
 custom_minimum_size = Vector2(0, 220)
