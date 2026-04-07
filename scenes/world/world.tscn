@@ -50,6 +50,12 @@ position = Vector2(64, -192)
 [node name="FactoryHouseMarker" type="Marker2D" parent="." unique_id=802417806]
 position = Vector2(320, -192)
 
+[node name="CentralWarehouseMarker" type="Marker2D" parent="." unique_id=802417807]
+position = Vector2(-448, -192)
+
+[node name="CentralWarehouseStorageMarker" type="Marker2D" parent="." unique_id=802417808]
+position = Vector2(-448, -64)
+
 [node name="ShopMarker" type="Marker2D" parent="." unique_id=1486291478]
 position = Vector2(-704, -192)
 

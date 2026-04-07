@@ -365,7 +365,7 @@ func _handle_collect_animal_product(item_type: String, group_name: String, colle
 				_add_carried_item(item_type, 1)
 				break
 
-		current_path = _grid_manager.get_path_cells(grid_pos, GameData.STORAGE_POS)
+		current_path = _grid_manager.get_path_cells(grid_pos, GameData.get_storage_pos())
 		is_working = false
 		return
 
@@ -377,8 +377,8 @@ func _handle_collect_animal_product(item_type: String, group_name: String, colle
 func _handle_fetch_animal() -> void:
 	if carried_animal == null:
 		var grid_pos = _get_current_grid_pos()
-		if grid_pos != GameData.SHOP_POS:
-			current_path = _grid_manager.get_path_cells(grid_pos, GameData.SHOP_POS)
+		if grid_pos != GameData.get_shop_pos():
+			current_path = _grid_manager.get_path_cells(grid_pos, GameData.get_shop_pos())
 			is_working = false
 			return
 
@@ -551,8 +551,8 @@ func _handle_gather_resource() -> void:
 	if _get_total_carried_items() >= MAX_CARRY:
 		_start_delivery()
 
-func _get_storage_pos_for_item(item_type: String) -> Vector2i:
-	return GameData.PROCESSING_STORAGE_POS if item_type in [GameData.ITEM_FLOUR, GameData.ITEM_TOMATO, GameData.ITEM_TOMATO_SAUCE] else GameData.STORAGE_POS
+func _get_storage_pos_for_item(_item_type: String) -> Vector2i:
+	return GameData.get_storage_pos()
 
 func _add_carried_item(item_type: String, amount: int) -> void:
 	carried_items[item_type] = _get_carried_amount(item_type) + amount
@@ -612,7 +612,7 @@ func _update_carried_visual() -> void:
 	item_sprite.position = Vector2(GameData.TILE_SIZE / 2.0, -10.0 - (count * 8))
 
 func _start_delivery() -> void:
-	current_job = {"type": GameData.JOB_DELIVER, "target_pos": GameData.PROCESSING_STORAGE_POS}
+	current_job = {"type": GameData.JOB_DELIVER, "target_pos": GameData.get_storage_pos()}
 	current_path = _grid_manager.get_path_cells(_get_current_grid_pos(), current_job.target_pos)
 	is_working = false
 

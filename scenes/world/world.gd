@@ -21,6 +21,8 @@ const START_CAMERA_LEFT_UI_WIDTH := 360.0
 @onready var house_marker: Marker2D = $HouseMarker
 @onready var gathering_house_marker: Marker2D = $GatheringHouseMarker
 @onready var factory_house_marker: Marker2D = $FactoryHouseMarker
+@onready var central_warehouse_marker: Marker2D = $CentralWarehouseMarker
+@onready var central_warehouse_storage_marker: Marker2D = $CentralWarehouseStorageMarker
 @onready var shop_marker: Marker2D = $ShopMarker
 @onready var worker_spawn_marker: Marker2D = $WorkerSpawnMarker
 @onready var animal_shop_spawn_marker: Marker2D = $AnimalShopSpawnMarker
@@ -67,17 +69,27 @@ func _spawn_worker_system() -> void:
 	_spawn_worker_house(GameData.WORKER_DOMAIN_FARM, house_marker, "res://assets/sprites/worker_house.png")
 	_spawn_worker_house(GameData.WORKER_DOMAIN_GATHERING, gathering_house_marker, "res://assets/sprites/gathering_house.png")
 	_spawn_worker_house(GameData.WORKER_DOMAIN_FACTORY, factory_house_marker, "res://assets/sprites/factory_house.png")
+	_spawn_central_warehouse()
 
 	var shop_pos: Vector2i = _marker_to_grid(shop_marker)
+	GameData.set_shop_pos(shop_pos)
 	_spawn_sprite(building_layer, shop_pos, "res://assets/sprites/shop_building.png", Color.BROWN)
 	GridManager.set_cell_solid(shop_pos, true)
 
 	_spawn_worker(GameData.WORKER_DOMAIN_FARM)
 
-func _spawn_worker_house(domain_id: String, marker: Marker2D, texture_path: String) -> void:
+func _spawn_worker_house(_domain_id: String, marker: Marker2D, texture_path: String) -> void:
 	var house_pos: Vector2i = _marker_to_grid(marker)
 	_spawn_sprite(building_layer, house_pos, texture_path, Color.BROWN)
 	GridManager.set_cell_solid(house_pos, true)
+
+func _spawn_central_warehouse() -> void:
+	var warehouse_pos: Vector2i = _marker_to_grid(central_warehouse_marker)
+	var storage_pos: Vector2i = GridManager.find_nearest_walkable_land_cell(_marker_to_grid(central_warehouse_storage_marker), 8)
+	GameData.set_storage_pos(storage_pos)
+	GameData.set_processing_storage_pos(storage_pos)
+	_spawn_sprite(building_layer, warehouse_pos, "res://assets/sprites/central_warehouse.png", Color.SLATE_GRAY)
+	GridManager.set_cell_solid(warehouse_pos, true)
 
 func _on_viewport_size_changed() -> void:
 	call_deferred("_frame_start_camera")
@@ -117,7 +129,7 @@ func _get_start_world_rect() -> Rect2:
 				max_cell.x = max(max_cell.x, cell.x)
 				max_cell.y = max(max_cell.y, cell.y)
 
-	for marker in [house_marker, shop_marker, worker_spawn_marker, animal_shop_spawn_marker]:
+	for marker in [house_marker, central_warehouse_marker, central_warehouse_storage_marker, shop_marker, worker_spawn_marker, animal_shop_spawn_marker]:
 		var cell := _marker_to_grid(marker)
 		if not has_any:
 			has_any = true
@@ -230,7 +242,10 @@ func _get_worker_spawn_world_position(domain_id: String) -> Vector2:
 	return _get_safe_spawn_world_position(house_marker_for_domain)
 
 func _is_shop_interaction_cell(grid_pos: Vector2i) -> bool:
-	return grid_pos == _marker_to_grid(shop_marker)
+	return grid_pos == GameData.get_shop_pos()
+
+func _is_warehouse_interaction_cell(grid_pos: Vector2i) -> bool:
+	return grid_pos == _marker_to_grid(central_warehouse_marker) or grid_pos == GameData.get_storage_pos()
 
 func _can_place_blueprint(grid_pos: Vector2i, blueprint_def: BlueprintDefinition) -> bool:
 	if blueprint_def == null:
@@ -255,6 +270,12 @@ func _handle_left_click(grid_pos: Vector2i) -> void:
 		var hud = get_node_or_null("HUD")
 		if hud:
 			hud.toggle_shop()
+		return
+
+	if _is_warehouse_interaction_cell(grid_pos):
+		var hud = get_node_or_null("HUD")
+		if hud:
+			hud._toggle_warehouse_panel()
 		return
 
 	if _farm_manager.get_tile_state(grid_pos) == _farm_manager.TileState.EMPTY:
@@ -418,7 +439,7 @@ func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2
 		sprite.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y)
 		if "crop" in texture_path or "sprout" in texture_path or "ready" in texture_path:
 			sprite.scale *= 0.6
-		if "_house" in texture_path:
+		if "_house" in texture_path or "warehouse" in texture_path:
 			sprite.scale *= 2.0
 			sprite.position -= Vector2(GameData.TILE_SIZE / 2.0, GameData.TILE_SIZE / 2.0)
 

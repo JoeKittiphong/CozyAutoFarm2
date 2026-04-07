@@ -60,7 +60,7 @@ func _process_processor(cell: Vector2i, delta: float) -> void:
 				"item_type": String(output_def.get("item", "")),
 				"output_item_type": String(output_def.get("item", "")),
 				"amount": int(output_def.get("amount", 1)),
-				"storage_pos": _get_safe_storage_pos(Vector2i(data.get("collect_storage_pos", GameData.PROCESSING_STORAGE_POS))),
+				"storage_pos": _get_safe_storage_pos(GameData.get_storage_pos()),
 				"interaction_pos": _get_processor_interaction_pos(cell),
 			})
 			_notify_world_visual(cell, String(data.get("ready_state_name", "READY")), GameData.get_processor_ready_texture(String(data.get("processor_type", "")), get_tile_level(cell)))
@@ -189,7 +189,7 @@ func _request_processor_ingredients(cell: Vector2i) -> void:
 	var stored_inputs: Dictionary = data.get("stored_inputs", {})
 	var retry_until: Dictionary = data.get("input_retry_until", {})
 	var now_seconds: float = Time.get_ticks_msec() / 1000.0
-	var storage_pos: Vector2i = _get_safe_storage_pos(Vector2i(data.get("deliver_storage_pos", GameData.STORAGE_POS)))
+	var storage_pos: Vector2i = _get_safe_storage_pos(GameData.get_storage_pos())
 	var interaction_pos: Vector2i = _get_processor_interaction_pos(cell)
 	if not GridManager.is_walkable_land_cell(storage_pos):
 		return

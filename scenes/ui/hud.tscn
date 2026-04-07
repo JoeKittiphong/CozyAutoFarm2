@@ -231,6 +231,12 @@ theme_override_colors/font_color = Color(0.9, 0.9, 1, 1)
 text = "No worker selected"
 horizontal_alignment = 1
 
+[node name="InfoLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content" unique_id=1331483967]
+layout_mode = 2
+text = "Workers now act automatically by house."
+horizontal_alignment = 1
+autowrap_mode = 2
+
 [node name="ModeLabel" type="Label" parent="SidePanels/WorkerManagePanel/Content" unique_id=1856606592]
 layout_mode = 2
 text = "Mode"

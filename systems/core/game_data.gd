@@ -132,6 +132,9 @@ static var _item_order: Array[String] = []
 static var _sellable_item_order: Array[String] = []
 static var _blueprint_order: Array[String] = []
 static var _shop_animal_order: Array[String] = []
+static var _storage_pos_runtime: Vector2i = STORAGE_POS
+static var _processing_storage_pos_runtime: Vector2i = PROCESSING_STORAGE_POS
+static var _shop_pos_runtime: Vector2i = SHOP_POS
 
 static func _ensure_resource_maps() -> void:
 	if not _item_defs_by_id.is_empty() and not _blueprint_defs_by_id.is_empty() and not _processor_defs_by_id.is_empty() and not _animal_defs_by_id.is_empty() and not _world_resource_defs_by_id.is_empty():
@@ -229,6 +232,24 @@ static func _get_world_resource_tile_key(source_id: int, atlas_coords: Vector2i)
 static func get_item_order() -> Array[String]:
 	_ensure_resource_maps()
 	return _item_order.duplicate()
+
+static func set_storage_pos(cell: Vector2i) -> void:
+	_storage_pos_runtime = cell
+
+static func get_storage_pos() -> Vector2i:
+	return _storage_pos_runtime
+
+static func set_processing_storage_pos(cell: Vector2i) -> void:
+	_processing_storage_pos_runtime = cell
+
+static func get_processing_storage_pos() -> Vector2i:
+	return _processing_storage_pos_runtime
+
+static func set_shop_pos(cell: Vector2i) -> void:
+	_shop_pos_runtime = cell
+
+static func get_shop_pos() -> Vector2i:
+	return _shop_pos_runtime
 
 static func get_sellable_item_order() -> Array[String]:
 	_ensure_resource_maps()
