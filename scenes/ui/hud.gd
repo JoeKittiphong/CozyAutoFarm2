@@ -11,13 +11,11 @@ var _warehouse_tween: Tween
 var _hide_warehouse_after_tween: bool = false
 var _selected_worker: FarmWorker = null
 var _current_worker_house_domain: String = GameData.WORKER_DOMAIN_FARM
+var _current_worker_house_cell: Vector2i = Vector2i(-999, -999)
 var _target_controls: Dictionary = {}
 
 @onready var _resources_container: HBoxContainer = $TopBar/BarContent/ResourcesContainer
 @onready var _warehouse_btn: Button = $TopBar/BarContent/WarehouseButton
-@onready var _targets_btn: Button = $TopBar/BarContent/TargetsButton
-@onready var _workers_btn: Button = $TopBar/BarContent/WorkersButton
-@onready var mill_btn: Button = $TopBar/BarContent/MillButton
 @onready var warehouse_panel: PanelContainer = $SidePanels/WarehousePanel
 @onready var targets_panel: PanelContainer = $SidePanels/TargetsPanel
 @onready var worker_manage_panel: PanelContainer = $SidePanels/WorkerManagePanel
@@ -57,10 +55,7 @@ var _target_controls: Dictionary = {}
 @onready var _world: Node = get_node_or_null("/root/World")
 
 func _ready() -> void:
-	_warehouse_btn.pressed.connect(_toggle_warehouse_panel)
-	_targets_btn.pressed.connect(_toggle_targets_panel)
-	_workers_btn.pressed.connect(_toggle_worker_management)
-	mill_btn.pressed.connect(_on_mill_pressed)
+	_warehouse_btn.pressed.connect(_toggle_targets_panel)
 	hire_worker_btn.pressed.connect(_on_hire_pressed)
 	upgrade_house_btn.pressed.connect(_upgrade_house)
 	upgrade_btn.pressed.connect(_on_upgrade_pressed)
@@ -83,7 +78,6 @@ func _ready() -> void:
 	_setup_dynamic_lists()
 	_setup_target_controls()
 	_setup_worker_management_controls()
-	warehouse_panel.position.x = 380.0
 
 	if not InventoryManager.resources_updated.is_connected(_on_resources_updated):
 		InventoryManager.resources_updated.connect(_on_resources_updated)
@@ -101,7 +95,6 @@ func _setup_top_bar() -> void:
 	_resources_container.add_child(money_resource)
 
 func _setup_dynamic_lists() -> void:
-	_warehouse_resource_list.repopulate()
 	_sell_list.repopulate()
 	_seed_blueprint_list.repopulate()
 	_building_blueprint_list.repopulate()
@@ -182,7 +175,6 @@ func open_upgrade_ui(cell: Vector2i) -> void:
 		targets_panel.visible = false
 		worker_panel.visible = false
 		worker_manage_panel.visible = false
-		_close_warehouse_panel(false)
 		_on_resources_updated()
 
 func _on_upgrade_pressed() -> void:
@@ -196,18 +188,20 @@ func toggle_shop() -> void:
 		worker_panel.visible = false
 		worker_manage_panel.visible = false
 		upgrade_panel.visible = false
-		_close_warehouse_panel(false)
 
 func toggle_worker_house(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> void:
+	toggle_worker_house_at(domain_id, Vector2i(-999, -999))
+
+func toggle_worker_house_at(domain_id: String, house_cell: Vector2i) -> void:
 	var switched_domain: bool = _current_worker_house_domain != domain_id
 	_current_worker_house_domain = domain_id
+	_current_worker_house_cell = house_cell
 	_refresh_worker_house_panel()
 	if switched_domain and worker_panel.visible:
 		shop_panel.visible = false
 		targets_panel.visible = false
 		worker_manage_panel.visible = false
 		upgrade_panel.visible = false
-		_close_warehouse_panel(false)
 		return
 	worker_panel.visible = not worker_panel.visible
 	if worker_panel.visible:
@@ -215,33 +209,15 @@ func toggle_worker_house(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> voi
 		targets_panel.visible = false
 		worker_manage_panel.visible = false
 		upgrade_panel.visible = false
-		_close_warehouse_panel(false)
 
 func _toggle_warehouse_panel() -> void:
-	if warehouse_panel.visible:
-		_close_warehouse_panel()
-	else:
-		_open_warehouse_panel()
+	_toggle_targets_panel()
 
 func _open_warehouse_panel() -> void:
-	_warehouse_resource_list.repopulate()
-	shop_panel.visible = false
-	targets_panel.visible = false
-	worker_panel.visible = false
-	worker_manage_panel.visible = false
-	upgrade_panel.visible = false
-	warehouse_panel.visible = true
-	warehouse_panel.position.x = 380.0
-	_animate_warehouse_to(0.0)
+	_open_targets_panel()
 
 func _close_warehouse_panel(animate: bool = true) -> void:
-	if not warehouse_panel.visible and not animate:
-		return
-	if animate:
-		_animate_warehouse_to(380.0, true)
-	else:
-		warehouse_panel.visible = false
-		warehouse_panel.position.x = 380.0
+	_close_targets_panel()
 
 func _animate_warehouse_to(target_x: float, hide_after: bool = false) -> void:
 	_hide_warehouse_after_tween = hide_after
@@ -268,7 +244,6 @@ func _open_targets_panel() -> void:
 	worker_panel.visible = false
 	worker_manage_panel.visible = false
 	upgrade_panel.visible = false
-	_close_warehouse_panel(false)
 	targets_panel.visible = true
 	_on_targets_updated()
 
@@ -286,7 +261,6 @@ func _open_worker_management() -> void:
 	targets_panel.visible = false
 	worker_panel.visible = false
 	upgrade_panel.visible = false
-	_close_warehouse_panel(false)
 	worker_manage_panel.visible = true
 	_refresh_worker_management_panel()
 
@@ -413,7 +387,7 @@ func _on_hire_pressed() -> void:
 		if _world == null:
 			_world = get_node_or_null("/root/World")
 		if _world:
-			_world._spawn_worker(_current_worker_house_domain)
+			_world._spawn_worker(_current_worker_house_domain, _current_worker_house_cell)
 		_refresh_worker_house_panel()
 		_refresh_worker_management_panel()
 
@@ -421,17 +395,18 @@ func _refresh_worker_house_panel() -> void:
 	var domain_label: String = GameData.get_worker_domain_label(_current_worker_house_domain)
 	_worker_panel_title.text = "--- %s ---" % domain_label.to_upper()
 	var domain_worker_count: int = InventoryManager.get_worker_count(_current_worker_house_domain)
-	var worker_price: int = InventoryManager.get_worker_price()
+	var domain_house_level: int = InventoryManager.get_house_level(_current_worker_house_domain)
+	var worker_price: int = InventoryManager.get_worker_price(_current_worker_house_domain)
 	hire_worker_btn.text = "Hire %s (%d/%d)\n-%d Coins" % [
 		domain_label.replace(" House", ""),
 		domain_worker_count,
-		InventoryManager.get_max_workers(),
+		InventoryManager.get_max_workers(_current_worker_house_domain),
 		worker_price,
 	]
-	hire_worker_btn.disabled = InventoryManager.count_workers_bought >= InventoryManager.get_max_workers() or InventoryManager.money < worker_price
-	var house_price: int = InventoryManager.get_house_upgrade_price()
-	if InventoryManager.house_level < GameData.MAX_UPGRADE_LEVEL:
-		upgrade_house_btn.text = "Upgrade Housing (Lv %d)\n-%d Coins" % [InventoryManager.house_level, house_price]
+	hire_worker_btn.disabled = domain_worker_count >= InventoryManager.get_max_workers(_current_worker_house_domain) or InventoryManager.money < worker_price
+	var house_price: int = InventoryManager.get_house_upgrade_price(_current_worker_house_domain)
+	if domain_house_level < GameData.MAX_UPGRADE_LEVEL:
+		upgrade_house_btn.text = "Upgrade Housing (Lv %d)\n-%d Coins" % [domain_house_level, house_price]
 		upgrade_house_btn.disabled = InventoryManager.money < house_price
 	else:
 		upgrade_house_btn.text = "Upgrade Housing (MAX Lv %d)" % GameData.MAX_UPGRADE_LEVEL
@@ -464,7 +439,7 @@ func _close_upgrade_panel() -> void:
 	upgrade_panel.visible = false
 
 func _upgrade_house() -> void:
-	InventoryManager.upgrade_house()
+	InventoryManager.upgrade_house(_current_worker_house_domain)
 
 func _sell_item(item_type: String) -> void:
 	InventoryManager.sell_item(item_type)
@@ -482,15 +457,9 @@ func _on_buy_animal_pressed(animal_type: String) -> void:
 		if InventoryManager.spend_money(animal_def.price):
 			_world._spawn_animal_at_shop(animal_type)
 
-func _on_mill_pressed() -> void:
-	InventoryManager.mill_paused = not InventoryManager.mill_paused
-	mill_btn.text = "Mill: PAUSED" if InventoryManager.mill_paused else "Mill: ON"
-
 func _on_resources_updated() -> void:
 	_refresh_worker_house_panel()
 	_on_targets_updated()
-
-	mill_btn.text = "Mill: PAUSED" if InventoryManager.mill_paused else "Mill: ON"
 
 	if upgrade_panel.visible:
 		_update_upgrade_panel_info()

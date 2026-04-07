@@ -29,6 +29,10 @@ const BLUEPRINT_TOMATO := "TOMATO"
 const BLUEPRINT_POTATO := "POTATO"
 const BLUEPRINT_COOP := "COOP"
 const BLUEPRINT_COW_PEN := "COW_PEN"
+const BLUEPRINT_FARM_HOUSE := "FARM_HOUSE"
+const BLUEPRINT_GATHERING_HOUSE := "GATHERING_HOUSE"
+const BLUEPRINT_FACTORY_HOUSE := "FACTORY_HOUSE"
+const BLUEPRINT_STORAGE := "STORAGE"
 const BLUEPRINT_BAKERY := "BAKERY"
 const BLUEPRINT_MILL := "MILL"
 const BLUEPRINT_TOMATO_FACTORY := "TOMATO_FACTORY"
@@ -100,6 +104,10 @@ const PREFERRED_ITEM_ORDER := [
 	ITEM_TOMATO_SAUCE,
 ]
 const PREFERRED_BLUEPRINT_ORDER := [
+	BLUEPRINT_GATHERING_HOUSE,
+	BLUEPRINT_FARM_HOUSE,
+	BLUEPRINT_FACTORY_HOUSE,
+	BLUEPRINT_STORAGE,
 	BLUEPRINT_WHEAT,
 	BLUEPRINT_COOP,
 	BLUEPRINT_COW_PEN,
@@ -372,6 +380,17 @@ static func get_worker_domain_label(domain_id: String) -> String:
 			return String(option.get("label", domain_id))
 	return domain_id
 
+static func get_worker_domain_for_house_tile_type(tile_type: String) -> String:
+	match tile_type:
+		BLUEPRINT_FARM_HOUSE:
+			return WORKER_DOMAIN_FARM
+		BLUEPRINT_GATHERING_HOUSE:
+			return WORKER_DOMAIN_GATHERING
+		BLUEPRINT_FACTORY_HOUSE:
+			return WORKER_DOMAIN_FACTORY
+		_:
+			return ""
+
 static func get_default_worker_role_for_domain(domain_id: String) -> String:
 	match domain_id:
 		WORKER_DOMAIN_FARM:
@@ -431,7 +450,7 @@ static func is_job_type_allowed_for_worker_domain(domain_id: String, job_type: S
 		WORKER_DOMAIN_GATHERING:
 			return job_type == JOB_GATHER_RESOURCE
 		WORKER_DOMAIN_FACTORY:
-			return job_type in [JOB_PROCESSOR_DELIVER, JOB_PROCESSOR_COLLECT]
+			return job_type in [JOB_PROCESSOR_DELIVER, JOB_PROCESSOR_COLLECT, JOB_FETCH_ANIMAL]
 		_:
 			return true
 

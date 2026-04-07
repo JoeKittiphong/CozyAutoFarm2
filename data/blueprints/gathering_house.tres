@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://systems/data/blueprint_definition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+blueprint_id = "GATHERING_HOUSE"
+label = "Gathering House"
+stock_short = "GH"
+base_price = 20.0
+growth = 1.0
+placement_type = "BUILDING"
+placement_surface = "LAND"
+shop_category = "SHOP"
+tile_type = "GATHERING_HOUSE"
+texture_path = "res://assets/sprites/gathering_house.png"

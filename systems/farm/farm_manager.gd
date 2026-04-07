@@ -1,6 +1,10 @@
 extends Node
 class_name FarmManagerClass
 
+const CropRuntimeClass = preload("res://systems/farm/crop_runtime.gd")
+const ProcessorRuntimeClass = preload("res://systems/farm/processor_runtime.gd")
+const BuildingRuntimeClass = preload("res://systems/farm/building_runtime.gd")
+const UpgradeRuntimeClass = preload("res://systems/farm/upgrade_runtime.gd")
 
 enum TileState {
 	EMPTY,
@@ -13,11 +17,16 @@ enum TileState {
 	COOP,
 	COW_PEN,
 	PROCESSOR,
+	BUILDING,
 }
 
 var _farm_data: Dictionary = {}
 var _growth_time: Dictionary = {}
 var _processor_data: Dictionary = {}
+var _crop_runtime: CropRuntime
+var _processor_runtime: ProcessorRuntime
+var _building_runtime: BuildingRuntime
+var _upgrade_runtime: UpgradeRuntime
 const TIME_TO_GROW := 30.0
 const PROCESSOR_INPUT_RETRY_SECONDS := 5.0
 
@@ -25,47 +34,66 @@ const PROCESSOR_INPUT_RETRY_SECONDS := 5.0
 @onready var _world: Node = get_node_or_null("/root/World")
 @onready var _inventory_manager: Node = get_node("/root/InventoryManager")
 
+func _ready() -> void:
+	_crop_runtime = CropRuntimeClass.new().setup(
+		_farm_data,
+		_growth_time,
+		_job_manager,
+		Callable(self, "_notify_world_visual"),
+		{
+			"BLUEPRINT": TileState.BLUEPRINT,
+			"TILLED": TileState.TILLED,
+			"PLANTED": TileState.PLANTED,
+			"GROWING": TileState.GROWING,
+			"READY_TO_HARVEST": TileState.READY_TO_HARVEST,
+		}
+	)
+	_processor_runtime = ProcessorRuntimeClass.new().setup(
+		_processor_data,
+		_job_manager,
+		_inventory_manager,
+		Callable(self, "_notify_world_visual"),
+		Callable(self, "_get_safe_storage_pos"),
+		Callable(self, "_get_processor_interaction_pos")
+	)
+	_building_runtime = BuildingRuntimeClass.new().setup(
+		_farm_data,
+		Callable(self, "_notify_world_visual"),
+		{
+			GameData.BLUEPRINT_COOP: TileState.COOP,
+			GameData.BLUEPRINT_COW_PEN: TileState.COW_PEN,
+		},
+		TileState.BUILDING
+	)
+	_upgrade_runtime = UpgradeRuntimeClass.new().setup(
+		_farm_data,
+		_processor_data,
+		_inventory_manager,
+		Callable(self, "_notify_world_visual"),
+		Callable(_building_runtime, "refresh_pen_visual"),
+		Callable(self, "_refresh_pen_animals"),
+		{
+			"EMPTY": TileState.EMPTY,
+			"PLANTED": TileState.PLANTED,
+			"GROWING": TileState.GROWING,
+			"READY_TO_HARVEST": TileState.READY_TO_HARVEST,
+			"COOP": TileState.COOP,
+			"COW_PEN": TileState.COW_PEN,
+			"PROCESSOR": TileState.PROCESSOR,
+		}
+	)
+
 func _process(delta: float) -> void:
 	for cell in _farm_data.keys():
 		var state := get_tile_state(cell)
 		if state == TileState.GROWING:
-			_process_crop_growth(cell, delta)
+			_crop_runtime.process_growth(cell, delta, get_tile_type(cell), get_tile_level(cell))
 		elif state == TileState.PROCESSOR:
-			_process_processor(cell, delta)
-
-func _process_crop_growth(cell: Vector2i, delta: float) -> void:
-	if not _growth_time.has(cell):
-		return
-
-	_growth_time[cell] -= delta
-	if _growth_time[cell] > 0.0:
-		return
-
-	_farm_data[cell]["state"] = TileState.READY_TO_HARVEST
-	_growth_time.erase(cell)
-	_job_manager.add_job(GameData.JOB_HARVEST, cell, {"crop_type": get_tile_type(cell), "item_type": get_tile_type(cell)})
-	_notify_world_visual(cell, "READY", GameData.get_crop_visual(get_tile_type(cell), "ready", get_tile_level(cell)))
-
-func _process_processor(cell: Vector2i, delta: float) -> void:
-	if not _processor_data.has(cell):
-		return
-
-	var data: Dictionary = _processor_data[cell]
-	if data.get("state", "WAITING") == "PROCESSING":
-		data["timer"] = float(data.get("timer", 0.0)) - delta
-		if float(data.get("timer", 0.0)) <= 0.0:
-			data["state"] = "READY"
-			var output_def: Dictionary = _get_primary_output(data)
-			_job_manager.add_job(GameData.JOB_PROCESSOR_COLLECT, cell, {
-				"item_type": String(output_def.get("item", "")),
-				"output_item_type": String(output_def.get("item", "")),
-				"amount": int(output_def.get("amount", 1)),
-				"storage_pos": _get_safe_storage_pos(GameData.get_storage_pos()),
-				"interaction_pos": _get_processor_interaction_pos(cell),
-			})
-			_notify_world_visual(cell, String(data.get("ready_state_name", "READY")), GameData.get_processor_ready_texture(String(data.get("processor_type", "")), get_tile_level(cell)))
-	elif data.get("state", "WAITING") == "WAITING":
-		_request_processor_ingredients(cell)
+			var processor_data: Dictionary = _processor_data.get(cell, {})
+			if processor_data.get("state", "WAITING") == "PROCESSING":
+				_processor_runtime.process_timer(cell, delta, get_tile_level(cell), _processor_runtime.get_primary_output(processor_data))
+			else:
+				_processor_runtime.process_tick(cell)
 
 func place_blueprint(cell: Vector2i, crop_type: String = GameData.ITEM_WHEAT, blueprint_id: String = "") -> void:
 	if get_tile_state(cell) != TileState.EMPTY:
@@ -73,47 +101,31 @@ func place_blueprint(cell: Vector2i, crop_type: String = GameData.ITEM_WHEAT, bl
 	if blueprint_id == "":
 		blueprint_id = crop_type
 
-	_farm_data[cell] = {
-		"state": TileState.BLUEPRINT,
-		"type": crop_type,
-		"blueprint_id": blueprint_id,
-		"level": 1,
-	}
-	_job_manager.add_job(GameData.JOB_TILL, cell, {"crop_type": crop_type, "item_type": crop_type})
+	_crop_runtime.place_blueprint(cell, crop_type, blueprint_id)
 
 func complete_till(cell: Vector2i) -> void:
 	if not _farm_data.has(cell) or get_tile_state(cell) != TileState.BLUEPRINT:
 		return
 
-	var crop_type: String = get_tile_type(cell)
-	_farm_data[cell]["state"] = TileState.TILLED
-	_job_manager.add_job(GameData.JOB_PLANT, cell, {"crop_type": crop_type, "item_type": crop_type})
-	_notify_world_visual(cell, "TILLED", "res://assets/sprites/dirt.png")
+	_crop_runtime.complete_till(cell, get_tile_type(cell))
 
 func complete_plant(cell: Vector2i) -> void:
 	if not _farm_data.has(cell) or get_tile_state(cell) != TileState.TILLED:
 		return
 
-	var crop_type: String = get_tile_type(cell)
-	_farm_data[cell]["state"] = TileState.PLANTED
-	_job_manager.add_job(GameData.JOB_WATER, cell, {"crop_type": crop_type, "item_type": crop_type})
-	_notify_world_visual(cell, "PLANTED", GameData.get_crop_visual(crop_type, "sprout", get_tile_level(cell)))
+	_crop_runtime.complete_plant(cell, get_tile_type(cell), get_tile_level(cell))
 
 func complete_water(cell: Vector2i) -> void:
 	if not _farm_data.has(cell) or get_tile_state(cell) != TileState.PLANTED:
 		return
 
-	_farm_data[cell]["state"] = TileState.GROWING
-	_growth_time[cell] = TIME_TO_GROW
+	_crop_runtime.complete_water(cell, TIME_TO_GROW)
 
 func complete_harvest(cell: Vector2i) -> void:
 	if not _farm_data.has(cell) or get_tile_state(cell) != TileState.READY_TO_HARVEST:
 		return
 
-	var crop_type: String = get_tile_type(cell)
-	_farm_data[cell]["state"] = TileState.BLUEPRINT
-	_job_manager.add_job(GameData.JOB_TILL, cell, {"crop_type": crop_type, "item_type": crop_type})
-	_notify_world_visual(cell, "HARVESTED", "res://assets/sprites/blueprint_indicator.png")
+	_crop_runtime.complete_harvest(cell, get_tile_type(cell))
 
 func get_tile_state(cell: Vector2i) -> int:
 	if not _farm_data.has(cell):
@@ -144,14 +156,7 @@ func _notify_world_visual(cell: Vector2i, state_name: String, tex_path: String) 
 func register_building(cell: Vector2i, tile_type: String, blueprint_id: String = "") -> void:
 	if blueprint_id == "":
 		blueprint_id = tile_type
-	var tile_state := TileState.COOP if tile_type == GameData.BLUEPRINT_COOP else TileState.COW_PEN
-	_farm_data[cell] = {
-		"state": tile_state,
-		"type": tile_type,
-		"blueprint_id": blueprint_id,
-		"level": 1,
-	}
-	_notify_world_visual(cell, tile_type, GameData.get_blueprint_level_texture(blueprint_id, 1))
+	_building_runtime.register_building(cell, tile_type, blueprint_id)
 
 func register_processor(cell: Vector2i, processor_type: String, blueprint_id: String = "") -> void:
 	var processor_def: ProcessorDefinition = GameData.get_processor_def(processor_type)
@@ -166,77 +171,14 @@ func register_processor(cell: Vector2i, processor_type: String, blueprint_id: St
 		"blueprint_id": blueprint_id,
 		"level": 1,
 	}
-	_processor_data[cell] = {
-		"processor_type": processor_type,
-		"state": "WAITING",
-		"timer": 0.0,
-		"level": 1,
-		"jobs_requested": [],
-		"stored_inputs": {},
-		"deliver_storage_pos": processor_def.deliver_storage_pos,
-		"collect_storage_pos": processor_def.collect_storage_pos,
-		"ready_state_name": processor_def.ready_state_name,
-		"ready_texture_path": processor_def.ready_texture_path,
-	}
+	_processor_runtime.register_processor(cell, processor_type, processor_def)
 	_notify_world_visual(cell, processor_type, GameData.get_processor_level_texture(processor_type, 1))
 
 func _request_processor_ingredients(cell: Vector2i) -> void:
-	var data: Dictionary = _processor_data.get(cell, {})
-	var processor_def: ProcessorDefinition = GameData.get_processor_def(String(data.get("processor_type", "")))
-	if processor_def == null:
-		return
-	var jobs_requested: Array = data.get("jobs_requested", [])
-	var stored_inputs: Dictionary = data.get("stored_inputs", {})
-	var retry_until: Dictionary = data.get("input_retry_until", {})
-	var now_seconds: float = Time.get_ticks_msec() / 1000.0
-	var storage_pos: Vector2i = _get_safe_storage_pos(GameData.get_storage_pos())
-	var interaction_pos: Vector2i = _get_processor_interaction_pos(cell)
-	if not GridManager.is_walkable_land_cell(storage_pos):
-		return
-	if not GridManager.is_walkable_land_cell(interaction_pos):
-		return
-	if storage_pos != interaction_pos and GridManager.get_path_cells(storage_pos, interaction_pos).is_empty():
-		return
-
-	for input_def in processor_def.inputs:
-		if input_def.item_def == null:
-			continue
-		var item_type: String = input_def.item_def.item_id
-		var required: int = input_def.amount
-		var stored: int = int(stored_inputs.get(item_type, 0))
-		if stored >= required:
-			continue
-		if item_type in jobs_requested:
-			continue
-		if float(retry_until.get(item_type, 0.0)) > now_seconds:
-			continue
-		if _inventory_manager.get_item_stock(item_type) < 1:
-			continue
-
-		var primary_output: Dictionary = _get_primary_output(data)
-		_job_manager.add_job(GameData.JOB_PROCESSOR_DELIVER, cell, {
-			"item_type": item_type,
-			"output_item_type": String(primary_output.get("item", "")),
-			"amount": 1,
-			"storage_pos": storage_pos,
-			"interaction_pos": interaction_pos,
-		})
-		jobs_requested.append(item_type)
-
-	data["jobs_requested"] = jobs_requested
-	data["input_retry_until"] = retry_until
+	_processor_runtime.request_ingredients(cell)
 
 func cancel_processor_delivery(cell: Vector2i, item_type: String, retry_seconds: float = PROCESSOR_INPUT_RETRY_SECONDS) -> void:
-	if not _processor_data.has(cell):
-		return
-	var data: Dictionary = _processor_data[cell]
-	var jobs_requested: Array = data.get("jobs_requested", [])
-	if item_type in jobs_requested:
-		jobs_requested.erase(item_type)
-	data["jobs_requested"] = jobs_requested
-	var retry_until: Dictionary = data.get("input_retry_until", {})
-	retry_until[item_type] = (Time.get_ticks_msec() / 1000.0) + retry_seconds
-	data["input_retry_until"] = retry_until
+	_processor_runtime.cancel_delivery(cell, item_type, retry_seconds)
 
 func _get_safe_storage_pos(storage_pos: Vector2i) -> Vector2i:
 	if GridManager.is_walkable_land_cell(storage_pos):
@@ -249,119 +191,26 @@ func _get_processor_interaction_pos(cell: Vector2i) -> Vector2i:
 	return GridManager.find_nearest_walkable_land_cell(cell, 8)
 
 func deliver_to_processor(cell: Vector2i, item_type: String, amount: int = 1) -> void:
-	if not _processor_data.has(cell):
-		return
-
-	var data: Dictionary = _processor_data[cell]
-	var processor_def := GameData.get_processor_def(String(data.get("processor_type", "")))
-	if processor_def == null:
-		return
-	var stored_inputs: Dictionary = data.get("stored_inputs", {})
-	stored_inputs[item_type] = int(stored_inputs.get(item_type, 0)) + amount
-	data["stored_inputs"] = stored_inputs
-
-	var jobs_requested: Array = data.get("jobs_requested", [])
-	if item_type in jobs_requested:
-		jobs_requested.erase(item_type)
-	data["jobs_requested"] = jobs_requested
-
-	if _has_all_processor_inputs(processor_def, stored_inputs):
-		data["state"] = "PROCESSING"
-		data["timer"] = processor_def.base_duration / pow(1.5, int(data.get("level", 1)) - 1)
+	_processor_runtime.deliver_to_processor(cell, item_type, amount)
 
 func collect_from_processor(cell: Vector2i) -> Dictionary:
-	if not _processor_data.has(cell):
-		return {}
-
-	var data: Dictionary = _processor_data[cell]
-	if data.get("state", "WAITING") != "READY":
-		return {}
-
-	var processor_def := GameData.get_processor_def(String(data.get("processor_type", "")))
-	if processor_def == null:
-		return {}
-	var result: Dictionary = {}
-	if not processor_def.outputs.is_empty():
-		var output_def = processor_def.outputs[0]
-		if output_def.item_def != null:
-			result = {"item": output_def.item_def.item_id, "amount": output_def.amount}
-
-	data["stored_inputs"] = {}
-	data["state"] = "WAITING"
-	data["timer"] = 0.0
-	data["jobs_requested"] = []
-	_notify_world_visual(cell, String(data.get("processor_type", "")), GameData.get_processor_level_texture(String(data.get("processor_type", "")), get_tile_level(cell)))
-	return result
-
-func _has_all_processor_inputs(processor_def, stored_inputs: Dictionary) -> bool:
-	for input_def in processor_def.inputs:
-		if input_def.item_def == null:
-			return false
-		var item_type: String = input_def.item_def.item_id
-		if int(stored_inputs.get(item_type, 0)) < input_def.amount:
-			return false
-	return true
-
-func _get_primary_output(data: Dictionary) -> Dictionary:
-	var processor_def := GameData.get_processor_def(String(data.get("processor_type", "")))
-	if processor_def != null and not processor_def.outputs.is_empty():
-		var output_def = processor_def.outputs[0]
-		if output_def.item_def != null:
-			return {"item": output_def.item_def.item_id, "amount": output_def.amount}
-	return {}
+	return _processor_runtime.collect_from_processor(cell, get_tile_level(cell))
 
 func get_tile_level(cell: Vector2i) -> int:
-	if _farm_data.has(cell):
-		return int(_farm_data[cell].get("level", 1))
-	return 1
+	return _upgrade_runtime.get_tile_level(cell)
 
 func get_tile_upgrade_price(cell: Vector2i) -> int:
-	var lvl := get_tile_level(cell)
-	var state := get_tile_state(cell)
-	return GameData.get_tile_upgrade_price(state == TileState.PROCESSOR, lvl)
+	return _upgrade_runtime.get_tile_upgrade_price(cell)
 
 func upgrade_tile(cell: Vector2i) -> bool:
-	if not _farm_data.has(cell):
-		return false
-
-	var data: Dictionary = _farm_data[cell]
-	var lvl := int(data.get("level", 1))
-	if lvl >= GameData.MAX_UPGRADE_LEVEL:
-		return false
-
-	var price := get_tile_upgrade_price(cell)
-	if not _inventory_manager.spend_money(price):
-		return false
-
-	data["level"] = lvl + 1
-	if _processor_data.has(cell):
-		_processor_data[cell]["level"] = lvl + 1
-	_refresh_tile_visual(cell)
-	_inventory_manager.resources_updated.emit()
-	return true
+	return _upgrade_runtime.upgrade_tile(cell)
 
 func _refresh_tile_visual(cell: Vector2i) -> void:
-	var state: int = get_tile_state(cell)
-	var level: int = get_tile_level(cell)
-	match state:
-		TileState.PLANTED, TileState.GROWING:
-			_notify_world_visual(cell, "PLANTED", GameData.get_crop_visual(get_tile_type(cell), "sprout", level))
-		TileState.READY_TO_HARVEST:
-			_notify_world_visual(cell, "READY", GameData.get_crop_visual(get_tile_type(cell), "ready", level))
-		TileState.COOP, TileState.COW_PEN:
-			_notify_world_visual(cell, get_tile_type(cell), GameData.get_blueprint_level_texture(get_blueprint_id(cell), level))
-			# Notify animals in this pen
-			var animal_defs = GameData.get_animal_defs_for_pen(get_tile_type(cell))
-			for animal_def in animal_defs:
-				for animal in get_tree().get_nodes_in_group(animal_def.group_name):
-					if animal is FarmAnimal and animal.home_pos == cell:
-						animal.update_visual(level)
-		TileState.PROCESSOR:
-			var processor_type: String = get_processor_type(cell)
-			var processor_state: String = String(_processor_data.get(cell, {}).get("state", "WAITING"))
-			if processor_state == "READY":
-				_notify_world_visual(cell, processor_type, GameData.get_processor_ready_texture(processor_type, level))
-			else:
-				_notify_world_visual(cell, processor_type, GameData.get_processor_level_texture(processor_type, level))
-		_:
-			pass
+	_upgrade_runtime.refresh_tile_visual(cell)
+
+func _refresh_pen_animals(cell: Vector2i, pen_type: String, level: int) -> void:
+	var animal_defs = GameData.get_animal_defs_for_pen(pen_type)
+	for animal_def in animal_defs:
+		for animal in get_tree().get_nodes_in_group(animal_def.group_name):
+			if animal is FarmAnimal and animal.home_pos == cell:
+				animal.update_visual(level)

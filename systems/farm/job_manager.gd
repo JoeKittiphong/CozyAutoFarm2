@@ -11,7 +11,7 @@ var _auto_non_resource_jobs_since_gather: int = 0
 func add_job(type: String, target_pos: Vector2i, extra_data: Dictionary = {}) -> void:
 	if type != GameData.JOB_FETCH_ANIMAL:
 		for job in jobs:
-			if job.target_pos == target_pos and job.type == type:
+			if _is_duplicate_job(job, type, target_pos, extra_data):
 				return
 
 	var job_dict := {
@@ -20,6 +20,16 @@ func add_job(type: String, target_pos: Vector2i, extra_data: Dictionary = {}) ->
 	}
 	job_dict.merge(extra_data)
 	jobs.append(job_dict)
+
+func _is_duplicate_job(existing_job: Dictionary, type: String, target_pos: Vector2i, extra_data: Dictionary) -> bool:
+	if existing_job.target_pos != target_pos or existing_job.type != type:
+		return false
+
+	match type:
+		GameData.JOB_PROCESSOR_DELIVER, GameData.JOB_PROCESSOR_COLLECT:
+			return String(existing_job.get("item_type", "")) == String(extra_data.get("item_type", ""))
+		_:
+			return true
 
 func _pop_job_at(index: int) -> Dictionary:
 	var selected_job: Dictionary = jobs[index]
@@ -54,6 +64,8 @@ func _get_job_related_item_type(job: Dictionary) -> String:
 func _get_base_job_priority(job: Dictionary) -> int:
 	var job_type: String = String(job.get("type", ""))
 	match job_type:
+		GameData.JOB_FETCH_ANIMAL:
+			return 200
 		GameData.JOB_HARVEST:
 			return 140
 		GameData.JOB_COLLECT_ANIMAL_PRODUCT, GameData.JOB_PROCESSOR_COLLECT:
@@ -66,8 +78,6 @@ func _get_base_job_priority(job: Dictionary) -> int:
 			return 100
 		GameData.JOB_TILL:
 			return 90
-		GameData.JOB_FETCH_ANIMAL:
-			return 85
 		GameData.JOB_GATHER_RESOURCE:
 			return 70
 		GameData.JOB_DELIVER:

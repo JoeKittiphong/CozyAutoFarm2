@@ -17,6 +17,7 @@ var blueprint_stock: Dictionary = {}
 var blueprint_purchase_counts: Dictionary = {}
 var count_workers_bought: int = 0
 var worker_counts_by_domain: Dictionary = {}
+var house_levels_by_domain: Dictionary = {}
 var item_targets: Dictionary = {}
 
 const MILL_TIME: float = 5.0
@@ -31,7 +32,9 @@ func _ready() -> void:
 		blueprint_purchase_counts[blueprint_type] = 0
 
 	for domain_option in GameData.get_worker_domain_options():
-		worker_counts_by_domain[String(domain_option.get("id", ""))] = 0
+		var domain_id: String = String(domain_option.get("id", ""))
+		worker_counts_by_domain[domain_id] = 0
+		house_levels_by_domain[domain_id] = 1
 
 func _process(_delta: float) -> void:
 	pass
@@ -118,44 +121,52 @@ func consume_blueprint(blueprint_type: String) -> bool:
 func get_blueprint_price(blueprint_type: String) -> int:
 	return GameData.get_blueprint_price(blueprint_type, int(blueprint_purchase_counts.get(blueprint_type, 0)))
 
-func get_worker_price() -> int:
-	return GameData.get_worker_price(count_workers_bought)
+func get_house_level(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> int:
+	return int(house_levels_by_domain.get(domain_id, 1))
 
-func get_max_workers() -> int:
-	return GameData.get_max_workers(house_level)
+func get_worker_price(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> int:
+	return GameData.get_worker_price(get_worker_count(domain_id))
+
+func get_max_workers(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> int:
+	return GameData.get_max_workers(get_house_level(domain_id))
 
 func get_worker_count(domain_id: String = "") -> int:
 	if domain_id == "":
-		return int(count_workers_bought)
+		var total_workers: int = 0
+		for count in worker_counts_by_domain.values():
+			total_workers += int(count)
+		return total_workers
 	return int(worker_counts_by_domain.get(domain_id, 0))
 
 func buy_worker(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> bool:
-	if count_workers_bought >= get_max_workers():
+	if get_worker_count(domain_id) >= get_max_workers(domain_id):
 		return false
 
-	var price := get_worker_price()
+	var price := get_worker_price(domain_id)
 	if money < price:
 		return false
 
 	money -= price
-	count_workers_bought += 1
 	worker_counts_by_domain[domain_id] = get_worker_count(domain_id) + 1
+	count_workers_bought = get_worker_count()
 	resources_updated.emit()
 	return true
 
-func get_house_upgrade_price() -> int:
-	return GameData.get_house_upgrade_price(house_level)
+func get_house_upgrade_price(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> int:
+	return GameData.get_house_upgrade_price(get_house_level(domain_id))
 
-func upgrade_house() -> bool:
-	if house_level >= GameData.MAX_UPGRADE_LEVEL:
+func upgrade_house(domain_id: String = GameData.WORKER_DOMAIN_FARM) -> bool:
+	var current_level: int = get_house_level(domain_id)
+	if current_level >= GameData.MAX_UPGRADE_LEVEL:
 		return false
 
-	var price := get_house_upgrade_price()
+	var price := get_house_upgrade_price(domain_id)
 	if money < price:
 		return false
 
 	money -= price
-	house_level += 1
+	house_levels_by_domain[domain_id] = current_level + 1
+	house_level = get_house_level(GameData.WORKER_DOMAIN_FARM)
 	resources_updated.emit()
 	return true
 

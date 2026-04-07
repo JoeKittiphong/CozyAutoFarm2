@@ -207,12 +207,29 @@ func get_current_status() -> String:
 
 func matches_domain_job(job: Dictionary) -> bool:
 	var job_type: String = String(job.get("type", ""))
+	if worker_domain == GameData.WORKER_DOMAIN_GATHERING:
+		if job_type == GameData.JOB_GATHER_RESOURCE:
+			return _should_take_gathering_job(job)
+		if job_type in [GameData.JOB_PROCESSOR_DELIVER, GameData.JOB_PROCESSOR_COLLECT, GameData.JOB_FETCH_ANIMAL]:
+			return not _has_pending_gathering_shortage()
 	return GameData.is_job_type_allowed_for_worker_domain(worker_domain, job_type)
 
 func matches_job(job: Dictionary) -> bool:
 	if not matches_domain_job(job):
 		return false
 	return true
+
+func _should_take_gathering_job(job: Dictionary) -> bool:
+	var target_item_type: String = String(job.get("target_item_type", ""))
+	if target_item_type == "":
+		return true
+	return _inventory_manager.get_item_target(target_item_type) <= 0 or _inventory_manager.is_item_below_target(target_item_type)
+
+func _has_pending_gathering_shortage() -> bool:
+	for item_type in [GameData.ITEM_WOOD, GameData.ITEM_STONE]:
+		if _inventory_manager.get_item_target(item_type) > 0 and _inventory_manager.is_item_below_target(item_type):
+			return true
+	return false
 
 func _is_complex_job(job: Dictionary) -> bool:
 	var job_type: String = String(job.get("type", ""))
@@ -375,10 +392,15 @@ func _handle_collect_animal_product(item_type: String, group_name: String, colle
 	is_working = false
 
 func _handle_fetch_animal() -> void:
+	var pickup_pos: Vector2i = Vector2i(current_job.get("interaction_pos", current_job.get("target_pos", GameData.get_shop_pos())))
 	if carried_animal == null:
 		var grid_pos = _get_current_grid_pos()
-		if grid_pos != GameData.get_shop_pos():
-			current_path = _grid_manager.get_path_cells(grid_pos, GameData.get_shop_pos())
+		if grid_pos != pickup_pos:
+			current_path = _grid_manager.get_path_cells(grid_pos, pickup_pos)
+			if current_path.is_empty():
+				current_job.clear()
+				is_working = false
+				return
 			is_working = false
 			return
 
@@ -628,4 +650,3 @@ func _complete_delivery() -> void:
 	carried_items.clear()
 	current_job.clear()
 	is_working = false
-

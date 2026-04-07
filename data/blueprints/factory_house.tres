@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="BlueprintDefinition" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://systems/data/blueprint_definition.gd" id="1"]
+[ext_resource type="Script" path="res://systems/data/resource_amount_definition.gd" id="2"]
+[ext_resource type="Resource" path="res://data/items/wood.tres" id="3"]
+[ext_resource type="Resource" path="res://data/items/stone.tres" id="4"]
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+item_def = ExtResource("3")
+amount = 10
+
+[sub_resource type="Resource" id="2"]
+script = ExtResource("2")
+item_def = ExtResource("4")
+amount = 10
+
+[resource]
+script = ExtResource("1")
+blueprint_id = "FACTORY_HOUSE"
+label = "Factory House"
+stock_short = "XH"
+base_price = 20.0
+growth = 1.0
+placement_type = "BUILDING"
+placement_surface = "LAND"
+shop_category = "SHOP"
+tile_type = "FACTORY_HOUSE"
+texture_path = "res://assets/sprites/factory_house.png"
+resource_costs = [SubResource("1"), SubResource("2")]

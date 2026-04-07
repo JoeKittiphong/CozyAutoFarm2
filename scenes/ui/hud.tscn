@@ -86,19 +86,22 @@ size_flags_horizontal = 3
 [node name="WarehouseButton" type="Button" parent="TopBar/BarContent" unique_id=211653424]
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
-text = "Warehouse"
+text = "Storage"
 
 [node name="TargetsButton" type="Button" parent="TopBar/BarContent" unique_id=211653425]
+visible = false
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 text = "Targets"
 
 [node name="WorkersButton" type="Button" parent="TopBar/BarContent" unique_id=1104079984]
+visible = false
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 text = "Workers"
 
 [node name="MillButton" type="Button" parent="TopBar/BarContent" unique_id=1256858844]
+visible = false
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
 text = "Mill: ON"
@@ -173,7 +176,7 @@ theme_override_constants/separation = 15
 
 [node name="Title" type="Label" parent="SidePanels/TargetsPanel/Content" unique_id=1935788329]
 layout_mode = 2
-text = "--- TARGETS ---"
+text = "--- STORAGE ---"
 horizontal_alignment = 1
 
 [node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/TargetsPanel/Content" unique_id=2090072161]
