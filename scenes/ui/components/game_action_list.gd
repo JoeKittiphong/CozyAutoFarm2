@@ -1,4 +1,4 @@
-extends VBoxContainer
+extends Container
 class_name GameActionListComponent
 
 const ActionButtonScene = preload("res://scenes/ui/components/action_button.tscn")
@@ -8,11 +8,14 @@ signal action_selected(action_id: String)
 @export_enum("sellable_items", "shop_animals", "blueprints") var list_kind: String = "sellable_items"
 @export var blueprint_shop_category: String = ""
 @export var blueprint_placement_filters: PackedStringArray = []
+@export_enum("text", "compact_cards") var display_mode: String = "text"
+@export var grid_columns: int = 3
 
 var _buttons_by_id: Dictionary = {}
 var _order: Array[String] = []
 
 func _ready() -> void:
+	_apply_layout_mode()
 	repopulate()
 
 func repopulate() -> void:
@@ -24,6 +27,7 @@ func repopulate() -> void:
 	for action_id in _order:
 		var button: ActionButtonComponent = ActionButtonScene.instantiate()
 		button.configure_action(action_id)
+		button.set_display_mode(display_mode)
 		button.action_pressed.connect(_on_button_action_pressed)
 		_buttons_by_id[action_id] = button
 		add_child(button)
@@ -59,3 +63,7 @@ func _resolve_order() -> Array[String]:
 
 func _on_button_action_pressed(action_id: String) -> void:
 	action_selected.emit(action_id)
+
+func _apply_layout_mode() -> void:
+	if is_class("GridContainer"):
+		set("columns", max(grid_columns, 1))

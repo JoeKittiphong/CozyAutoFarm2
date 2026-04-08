@@ -143,6 +143,17 @@ static var _shop_animal_order: Array[String] = []
 static var _storage_pos_runtime: Vector2i = STORAGE_POS
 static var _processing_storage_pos_runtime: Vector2i = PROCESSING_STORAGE_POS
 static var _shop_pos_runtime: Vector2i = SHOP_POS
+static var _has_central_storage_runtime: bool = false
+static var _domain_storage_pos_runtime: Dictionary = {
+	WORKER_DOMAIN_FARM: STORAGE_POS,
+	WORKER_DOMAIN_GATHERING: STORAGE_POS,
+	WORKER_DOMAIN_FACTORY: PROCESSING_STORAGE_POS,
+}
+static var _domain_house_pos_runtime: Dictionary = {
+	WORKER_DOMAIN_FARM: Vector2i.ZERO,
+	WORKER_DOMAIN_GATHERING: Vector2i.ZERO,
+	WORKER_DOMAIN_FACTORY: Vector2i.ZERO,
+}
 
 static func _ensure_resource_maps() -> void:
 	if not _item_defs_by_id.is_empty() and not _blueprint_defs_by_id.is_empty() and not _processor_defs_by_id.is_empty() and not _animal_defs_by_id.is_empty() and not _world_resource_defs_by_id.is_empty():
@@ -245,12 +256,38 @@ static func set_storage_pos(cell: Vector2i) -> void:
 	_storage_pos_runtime = cell
 
 static func get_storage_pos() -> Vector2i:
+	if not _has_central_storage_runtime:
+		return get_domain_storage_pos(WORKER_DOMAIN_FARM)
 	return _storage_pos_runtime
+
+static func set_has_central_storage(enabled: bool) -> void:
+	_has_central_storage_runtime = enabled
+
+static func has_central_storage() -> bool:
+	return _has_central_storage_runtime
+
+static func set_domain_storage_pos(domain_id: String, cell: Vector2i) -> void:
+	_domain_storage_pos_runtime[domain_id] = cell
+
+static func get_domain_storage_pos(domain_id: String) -> Vector2i:
+	if _domain_storage_pos_runtime.has(domain_id):
+		return Vector2i(_domain_storage_pos_runtime.get(domain_id, STORAGE_POS))
+	return STORAGE_POS
+
+static func set_domain_house_pos(domain_id: String, cell: Vector2i) -> void:
+	_domain_house_pos_runtime[domain_id] = cell
+
+static func get_domain_house_pos(domain_id: String) -> Vector2i:
+	if _domain_house_pos_runtime.has(domain_id):
+		return Vector2i(_domain_house_pos_runtime.get(domain_id, Vector2i.ZERO))
+	return Vector2i.ZERO
 
 static func set_processing_storage_pos(cell: Vector2i) -> void:
 	_processing_storage_pos_runtime = cell
 
 static func get_processing_storage_pos() -> Vector2i:
+	if not _has_central_storage_runtime:
+		return get_domain_storage_pos(WORKER_DOMAIN_FACTORY)
 	return _processing_storage_pos_runtime
 
 static func set_shop_pos(cell: Vector2i) -> void:

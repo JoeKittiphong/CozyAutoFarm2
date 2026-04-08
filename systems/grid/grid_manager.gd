@@ -3,6 +3,7 @@ class_name GridManagerClass
 
 
 const DEFAULT_GRID_REGION := Rect2i(-50, -50, 100, 100)
+const MAX_REACHABILITY_PATH_CHECKS := 8
 
 var grid: AStarGrid2D
 var ground_cells: Dictionary = {}
@@ -110,6 +111,7 @@ func find_reachable_land_cell_near(origin: Vector2i, from_cell: Vector2i, max_ra
 		if not direct_path.is_empty() or from_cell == origin:
 			return origin
 
+	var path_checks: int = 0
 	for radius in range(1, max_radius + 1):
 		var candidates: Array[Vector2i] = []
 		if cardinal_only:
@@ -127,14 +129,29 @@ func find_reachable_land_cell_near(origin: Vector2i, from_cell: Vector2i, max_ra
 						continue
 					candidates.append(candidate)
 
+		candidates = _sort_cells_by_distance(candidates, from_cell)
 		for candidate in candidates:
 			if not is_walkable_land_cell(candidate):
 				continue
+			if path_checks >= MAX_REACHABILITY_PATH_CHECKS:
+				return origin
+			path_checks += 1
 			var path: Array[Vector2i] = get_path_cells(from_cell, candidate)
 			if not path.is_empty() or from_cell == candidate:
 				return candidate
 
 	return origin
+
+func _sort_cells_by_distance(cells: Array[Vector2i], from_cell: Vector2i) -> Array[Vector2i]:
+	var sorted_cells: Array[Vector2i] = cells.duplicate()
+	sorted_cells.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var a_distance: int = abs(a.x - from_cell.x) + abs(a.y - from_cell.y)
+		var b_distance: int = abs(b.x - from_cell.x) + abs(b.y - from_cell.y)
+		if a_distance == b_distance:
+			return abs(a.x - from_cell.x) < abs(b.x - from_cell.x)
+		return a_distance < b_distance
+	)
+	return sorted_cells
 
 func reset_map_cells(map_region: Rect2i, ground_walkable_cells: Array[Vector2i], water_surface_cells: Array[Vector2i] = [], obstacle_cells: Array[Vector2i] = [], resource_cells: Array[Vector2i] = []) -> void:
 	if grid == null:

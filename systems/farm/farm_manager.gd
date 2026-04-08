@@ -27,8 +27,14 @@ var _crop_runtime: CropRuntime
 var _processor_runtime: ProcessorRuntime
 var _building_runtime: BuildingRuntime
 var _upgrade_runtime: UpgradeRuntime
+var _animal_by_home_pos: Dictionary = {}
 const TIME_TO_GROW := 30.0
 const PROCESSOR_INPUT_RETRY_SECONDS := 5.0
+const FARM_TICK_SECONDS := 0.25
+
+var _active_growing_cells: Dictionary = {}
+var _active_processor_cells: Dictionary = {}
+var _farm_tick_accumulator: float = 0.0
 
 @onready var _job_manager: Node = get_node("/root/JobManager")
 @onready var _world: Node = get_node_or_null("/root/World")
@@ -84,16 +90,37 @@ func _ready() -> void:
 	)
 
 func _process(delta: float) -> void:
-	for cell in _farm_data.keys():
-		var state := get_tile_state(cell)
-		if state == TileState.GROWING:
-			_crop_runtime.process_growth(cell, delta, get_tile_type(cell), get_tile_level(cell))
-		elif state == TileState.PROCESSOR:
-			var processor_data: Dictionary = _processor_data.get(cell, {})
-			if processor_data.get("state", "WAITING") == "PROCESSING":
-				_processor_runtime.process_timer(cell, delta, get_tile_level(cell), _processor_runtime.get_primary_output(processor_data))
-			else:
-				_processor_runtime.process_tick(cell)
+	if _active_growing_cells.is_empty() and _active_processor_cells.is_empty():
+		return
+
+	_farm_tick_accumulator += delta
+	if _farm_tick_accumulator < FARM_TICK_SECONDS:
+		return
+
+	var tick_delta: float = _farm_tick_accumulator
+	_farm_tick_accumulator = 0.0
+	_process_active_crops(tick_delta)
+	_process_active_processors(tick_delta)
+
+func _process_active_crops(delta: float) -> void:
+	for cell in _active_growing_cells.keys():
+		if get_tile_state(cell) != TileState.GROWING:
+			_active_growing_cells.erase(cell)
+			continue
+		_crop_runtime.process_growth(cell, delta, get_tile_type(cell), get_tile_level(cell))
+		if get_tile_state(cell) != TileState.GROWING:
+			_active_growing_cells.erase(cell)
+
+func _process_active_processors(delta: float) -> void:
+	for cell in _active_processor_cells.keys():
+		if not _processor_data.has(cell) or get_tile_state(cell) != TileState.PROCESSOR:
+			_active_processor_cells.erase(cell)
+			continue
+		var processor_data: Dictionary = _processor_data.get(cell, {})
+		if processor_data.get("state", "WAITING") == "PROCESSING":
+			_processor_runtime.process_timer(cell, delta, get_tile_level(cell), _processor_runtime.get_primary_output(processor_data))
+		else:
+			_processor_runtime.process_tick(cell)
 
 func place_blueprint(cell: Vector2i, crop_type: String = GameData.ITEM_WHEAT, blueprint_id: String = "") -> void:
 	if get_tile_state(cell) != TileState.EMPTY:
@@ -120,12 +147,14 @@ func complete_water(cell: Vector2i) -> void:
 		return
 
 	_crop_runtime.complete_water(cell, TIME_TO_GROW)
+	_active_growing_cells[cell] = true
 
 func complete_harvest(cell: Vector2i) -> void:
 	if not _farm_data.has(cell) or get_tile_state(cell) != TileState.READY_TO_HARVEST:
 		return
 
 	_crop_runtime.complete_harvest(cell, get_tile_type(cell))
+	_active_growing_cells.erase(cell)
 
 func get_tile_state(cell: Vector2i) -> int:
 	if not _farm_data.has(cell):
@@ -172,10 +201,8 @@ func register_processor(cell: Vector2i, processor_type: String, blueprint_id: St
 		"level": 1,
 	}
 	_processor_runtime.register_processor(cell, processor_type, processor_def)
+	_active_processor_cells[cell] = true
 	_notify_world_visual(cell, processor_type, GameData.get_processor_level_texture(processor_type, 1))
-
-func _request_processor_ingredients(cell: Vector2i) -> void:
-	_processor_runtime.request_ingredients(cell)
 
 func cancel_processor_delivery(cell: Vector2i, item_type: String, retry_seconds: float = PROCESSOR_INPUT_RETRY_SECONDS) -> void:
 	_processor_runtime.cancel_delivery(cell, item_type, retry_seconds)
@@ -208,9 +235,35 @@ func upgrade_tile(cell: Vector2i) -> bool:
 func _refresh_tile_visual(cell: Vector2i) -> void:
 	_upgrade_runtime.refresh_tile_visual(cell)
 
-func _refresh_pen_animals(cell: Vector2i, pen_type: String, level: int) -> void:
-	var animal_defs = GameData.get_animal_defs_for_pen(pen_type)
-	for animal_def in animal_defs:
-		for animal in get_tree().get_nodes_in_group(animal_def.group_name):
-			if animal is FarmAnimal and animal.home_pos == cell:
-				animal.update_visual(level)
+func _refresh_pen_animals(cell: Vector2i, _pen_type: String, level: int) -> void:
+	var animal := get_animal_at(cell)
+	if animal is FarmAnimal:
+		animal.update_visual(level)
+
+func register_animal(cell: Vector2i, animal: Node2D) -> void:
+	if cell == Vector2i(-999, -999) or animal == null:
+		return
+	_animal_by_home_pos[cell] = animal
+
+func unregister_animal(cell: Vector2i, animal: Node2D = null) -> void:
+	if not _animal_by_home_pos.has(cell):
+		return
+	if animal != null and _animal_by_home_pos.get(cell) != animal:
+		return
+	_animal_by_home_pos.erase(cell)
+
+func get_animal_at(cell: Vector2i) -> Node2D:
+	var animal: Node2D = _animal_by_home_pos.get(cell, null)
+	if animal != null and is_instance_valid(animal):
+		return animal
+	if animal != null:
+		_animal_by_home_pos.erase(cell)
+	return null
+
+func find_empty_pen(pen_type: String) -> Vector2i:
+	for cell in _farm_data.keys():
+		if get_tile_type(cell) != pen_type:
+			continue
+		if get_animal_at(cell) == null:
+			return cell
+	return Vector2i(-999, -999)

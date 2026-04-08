@@ -32,6 +32,8 @@ const SORT_Z_BASE := 2000
 @onready var _job_manager: Node = get_node("/root/JobManager")
 @onready var _resource_manager: Node = get_node("/root/ResourceManager")
 
+var _texture_cache: Dictionary = {}
+
 func _ready() -> void:
 	# บังคับขนาดช่อง TileSet ให้ตรงกับค่ากลางใน GameData
 	if ground_layer and ground_layer.tile_set:
@@ -67,9 +69,24 @@ func _scan_editor_map() -> void:
 		_resource_manager.register_from_layer(resource_layer)
 
 func _spawn_starting_structures() -> void:
+	var farm_house_cell: Vector2i = _marker_to_grid(house_marker)
+	var gathering_house_cell: Vector2i = _marker_to_grid(gathering_house_marker)
+	var factory_house_cell: Vector2i = _marker_to_grid(factory_house_marker)
+	GameData.set_domain_house_pos(GameData.WORKER_DOMAIN_FARM, farm_house_cell)
+	GameData.set_domain_house_pos(GameData.WORKER_DOMAIN_GATHERING, gathering_house_cell)
+	GameData.set_domain_house_pos(GameData.WORKER_DOMAIN_FACTORY, factory_house_cell)
+
+	var farm_storage_pos: Vector2i = GridManager.find_nearest_walkable_land_cell(_marker_to_grid(house_marker), 8)
+	var gathering_storage_pos: Vector2i = GridManager.find_nearest_walkable_land_cell(_marker_to_grid(gathering_house_marker), 8)
+	var factory_storage_pos: Vector2i = GridManager.find_nearest_walkable_land_cell(_marker_to_grid(factory_house_marker), 8)
+	GameData.set_domain_storage_pos(GameData.WORKER_DOMAIN_FARM, farm_storage_pos)
+	GameData.set_domain_storage_pos(GameData.WORKER_DOMAIN_GATHERING, gathering_storage_pos)
+	GameData.set_domain_storage_pos(GameData.WORKER_DOMAIN_FACTORY, factory_storage_pos)
+
 	var default_storage_pos: Vector2i = GridManager.find_nearest_walkable_land_cell(_marker_to_grid(central_warehouse_storage_marker), 8)
 	GameData.set_storage_pos(default_storage_pos)
 	GameData.set_processing_storage_pos(default_storage_pos)
+	GameData.set_has_central_storage(false)
 	var shop_pos: Vector2i = _marker_to_grid(shop_marker)
 	GameData.set_shop_pos(shop_pos)
 	_spawn_sprite(building_layer, shop_pos, "res://assets/sprites/shop_building.png", Color.BROWN)
@@ -113,7 +130,7 @@ func _get_start_world_rect() -> Rect2:
 				max_cell.x = max(max_cell.x, cell.x)
 				max_cell.y = max(max_cell.y, cell.y)
 
-	for marker in [house_marker, central_warehouse_marker, central_warehouse_storage_marker, shop_marker, worker_spawn_marker, animal_shop_spawn_marker]:
+	for marker in [house_marker, shop_marker, worker_spawn_marker, animal_shop_spawn_marker]:
 		var cell := _marker_to_grid(marker)
 		if not has_any:
 			has_any = true
@@ -322,24 +339,17 @@ func _place_available_blueprint(grid_pos: Vector2i, inv: Node, f_manager: Node) 
 					var storage_pos: Vector2i = GridManager.find_nearest_walkable_land_cell(grid_pos, 8)
 					GameData.set_storage_pos(storage_pos)
 					GameData.set_processing_storage_pos(storage_pos)
+					GameData.set_has_central_storage(true)
+				var domain_id: String = GameData.get_worker_domain_for_house_tile_type(tile_type)
+				if domain_id != "":
+					GameData.set_domain_house_pos(domain_id, grid_pos)
+					var domain_storage_pos: Vector2i = GridManager.find_nearest_walkable_land_cell(grid_pos, 8)
+					GameData.set_domain_storage_pos(domain_id, domain_storage_pos)
 			_set_structure_solid(grid_pos, true)
 		return
 
 func has_empty_pen(pen_type: String) -> bool:
-	for cell in _farm_manager._farm_data.keys():
-		if _farm_manager.get_tile_type(cell) != pen_type:
-			continue
-		var has_animal := false
-		for animal_def in GameData.get_animal_defs_for_pen(pen_type):
-			for animal in get_tree().get_nodes_in_group(animal_def.group_name):
-				if animal.home_pos == cell:
-					has_animal = true
-					break
-			if has_animal:
-				break
-		if not has_animal:
-			return true
-	return false
+	return _farm_manager.find_empty_pen(pen_type) != Vector2i(-999, -999)
 
 func _spawn_animal_at_shop(type: String) -> void:
 	var animal_def = GameData.get_animal_def(type)
@@ -373,7 +383,7 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 		if tile != null:
 			_move_visual_to_layer(tile, target_layer)
 			tile.modulate = Color(1, 1, 1, 0.5)
-			var tex = ResourceLoader.load("res://assets/sprites/dirt.png")
+			var tex = _load_texture("res://assets/sprites/dirt.png")
 			if tex:
 				tile.texture = tex
 				var t_size = tex.get_size()
@@ -387,7 +397,7 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 		target_layer.add_child(tile)
 	else:
 		_move_visual_to_layer(tile, target_layer)
-		var tex = ResourceLoader.load(tex_path)
+		var tex = _load_texture(tex_path)
 		if tex:
 			tile.texture = tex
 			var t_size = tex.get_size()
@@ -476,7 +486,7 @@ func _is_medium_visual(state_name: String, tex_path: String) -> bool:
 
 func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2D:
 	var sprite = Sprite2D.new()
-	var tex = ResourceLoader.load(texture_path)
+	var tex = _load_texture(texture_path)
 
 	if tex == null:
 		var fallback = GradientTexture2D.new()
@@ -503,6 +513,16 @@ func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2
 			sprite.position -= Vector2(GameData.TILE_SIZE / 2.0, GameData.TILE_SIZE / 2.0)
 
 	return sprite
+
+func _load_texture(texture_path: String) -> Texture2D:
+	if texture_path == "":
+		return null
+	if _texture_cache.has(texture_path):
+		return _texture_cache[texture_path]
+	var tex := ResourceLoader.load(texture_path) as Texture2D
+	if tex != null:
+		_texture_cache[texture_path] = tex
+	return tex
 
 func _spawn_sprite(parent: Node2D, grid_pos: Vector2i, texture_path: String, fallback_color: Color) -> void:
 	var sprite = _create_sprite_node(texture_path, fallback_color)

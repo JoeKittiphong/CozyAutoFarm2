@@ -36,9 +36,6 @@ func _ready() -> void:
 		worker_counts_by_domain[domain_id] = 0
 		house_levels_by_domain[domain_id] = 1
 
-func _process(_delta: float) -> void:
-	pass
-
 func get_item_stock(item_type: String) -> int:
 	return int(item_stock.get(item_type, 0))
 
@@ -214,18 +211,3 @@ func buy_blueprint(blueprint_type: String) -> bool:
 	blueprint_stock[blueprint_type] = get_blueprint_stock(blueprint_type) + 1
 	resources_updated.emit()
 	return true
-
-func add_wheat(amount: int) -> void:
-	add_item(GameData.ITEM_WHEAT, amount)
-
-func add_egg(amount: int) -> void:
-	add_item(GameData.ITEM_EGG, amount)
-
-func add_milk(amount: int) -> void:
-	add_item(GameData.ITEM_MILK, amount)
-
-func add_cake(amount: int) -> void:
-	add_item(GameData.ITEM_CAKE, amount)
-
-func spend_flour(amount: int) -> bool:
-	return spend_item(GameData.ITEM_FLOUR, amount)

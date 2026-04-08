@@ -91,9 +91,20 @@ func gather_resource(cell: Vector2i) -> Dictionary:
 		_world.clear_resource_tile(cell)
 
 	if _resource_layer != null:
-		register_from_layer(_resource_layer)
+		_refresh_nearby_resource_cells(cell)
 
 	return {
 		"item_type": resource_def.drop_item_def.item_id,
 		"amount": resource_def.drop_amount,
 	}
+
+
+func _refresh_nearby_resource_cells(origin: Vector2i) -> void:
+	for x in range(origin.x - 1, origin.x + 2):
+		for y in range(origin.y - 1, origin.y + 2):
+			var candidate := Vector2i(x, y)
+			if candidate == origin or _resources.has(candidate):
+				continue
+			if _resource_layer.get_cell_source_id(candidate) < 0:
+				continue
+			_register_resource_cell(_resource_layer, candidate)
