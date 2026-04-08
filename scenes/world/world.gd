@@ -35,7 +35,7 @@ const SORT_Z_BASE := 2000
 var _texture_cache: Dictionary = {}
 
 func _ready() -> void:
-	# บังคับขนาดช่อง TileSet ให้ตรงกับค่ากลางใน GameData
+	# เธเธฑเธเธเธฑเธเธเธเธฒเธ”เธเนเธญเธ TileSet เนเธซเนเธ•เธฃเธเธเธฑเธเธเนเธฒเธเธฅเธฒเธเนเธ GameData
 	if ground_layer and ground_layer.tile_set:
 		ground_layer.tile_set.tile_size = Vector2i(GameData.TILE_SIZE, GameData.TILE_SIZE)
 
@@ -383,27 +383,16 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 		if tile != null:
 			_move_visual_to_layer(tile, target_layer)
 			tile.modulate = Color(1, 1, 1, 0.5)
-			var tex = _load_texture("res://assets/sprites/dirt.png")
-			if tex:
-				tile.texture = tex
-				var t_size = tex.get_size()
-				tile.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y)
+			_apply_sprite_texture_and_layout(tile, grid_pos, state_name, "res://assets/sprites/dirt.png", Color.WHITE)
 		return
 
 	if tile == null:
-		tile = _create_sprite_node(tex_path, Color.WHITE)
-		tile.position = _grid_to_world_center(grid_pos)
+		tile = _create_sprite_node(grid_pos, state_name, tex_path, Color.WHITE)
 		tile.name = node_name
 		target_layer.add_child(tile)
 	else:
 		_move_visual_to_layer(tile, target_layer)
-		var tex = _load_texture(tex_path)
-		if tex:
-			tile.texture = tex
-			var t_size = tex.get_size()
-			tile.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y)
-			if "crop" in tex_path or "sprout" in tex_path or "ready" in tex_path:
-				tile.scale *= 0.6
+		_apply_sprite_texture_and_layout(tile, grid_pos, state_name, tex_path, Color.WHITE)
 
 	_apply_visual_sorting(tile, grid_pos, state_name, tex_path)
 
@@ -484,35 +473,117 @@ func _is_medium_visual(state_name: String, tex_path: String) -> bool:
 		or lower_state_name in ["tree", "rock"]
 	)
 
-func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2D:
+func _create_sprite_node(grid_pos: Vector2i, state_name: String, texture_path: String, fallback_color: Color) -> Sprite2D:
 	var sprite = Sprite2D.new()
+	_apply_sprite_texture_and_layout(sprite, grid_pos, state_name, texture_path, fallback_color)
+	return sprite
+
+func _apply_sprite_texture_and_layout(sprite: Sprite2D, grid_pos: Vector2i, state_name: String, texture_path: String, fallback_color: Color) -> void:
+	var visual_config: Dictionary = _get_visual_config(grid_pos, state_name, texture_path)
+	var size_in_tiles: Vector2 = Vector2(visual_config.get("size_in_tiles", Vector2.ONE))
+	var scale_multiplier: float = float(visual_config.get("scale_multiplier", 1.0))
+	var y_offset_tiles: float = float(visual_config.get("y_offset_tiles", 0.0))
 	var tex = _load_texture(texture_path)
 
 	if tex == null:
 		var fallback = GradientTexture2D.new()
-		fallback.width = GameData.TILE_SIZE
-		fallback.height = GameData.TILE_SIZE
+		fallback.width = max(1, int(GameData.TILE_SIZE * size_in_tiles.x))
+		fallback.height = max(1, int(GameData.TILE_SIZE * size_in_tiles.y))
 		fallback.fill_to = Vector2(1, 1)
 		var grad = Gradient.new()
 		grad.set_color(0, fallback_color)
 		grad.set_color(1, fallback_color.darkened(0.2))
-		if "crop" in texture_path:
-			fallback.width = int(GameData.TILE_SIZE * 0.6)
-			fallback.height = int(GameData.TILE_SIZE * 0.6)
 		fallback.gradient = grad
 		tex = fallback
-		sprite.texture = tex
-	else:
-		sprite.texture = tex
-		var t_size = tex.get_size()
-		sprite.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y)
-		if "crop" in texture_path or "sprout" in texture_path or "ready" in texture_path:
-			sprite.scale *= 0.6
-		if "_house" in texture_path or "warehouse" in texture_path:
-			sprite.scale *= 2.0
-			sprite.position -= Vector2(GameData.TILE_SIZE / 2.0, GameData.TILE_SIZE / 2.0)
 
-	return sprite
+	sprite.texture = tex
+	var t_size: Vector2 = tex.get_size()
+	sprite.scale = Vector2(
+		(GameData.TILE_SIZE * size_in_tiles.x) / max(t_size.x, 1.0),
+		(GameData.TILE_SIZE * size_in_tiles.y) / max(t_size.y, 1.0)
+	) * scale_multiplier
+	sprite.position = _grid_to_world_center(grid_pos) - Vector2(0.0, GameData.TILE_SIZE * y_offset_tiles)
+
+func _get_visual_config(grid_pos: Vector2i, state_name: String, texture_path: String) -> Dictionary:
+	var default_config: Dictionary = {
+		"size_in_tiles": Vector2.ONE,
+		"scale_multiplier": 1.0,
+		"y_offset_tiles": 0.0,
+	}
+	var lower_texture_path: String = texture_path.to_lower()
+	var lower_state_name: String = state_name.to_lower()
+
+	if "crop" in lower_texture_path or "sprout" in lower_texture_path or "ready" in lower_texture_path:
+		default_config["size_in_tiles"] = Vector2.ONE * 0.6
+		return default_config
+
+	var blueprint_def: BlueprintDefinition = _get_visual_blueprint_def(grid_pos)
+	if blueprint_def != null:
+		return {
+			"size_in_tiles": _sanitize_visual_size(blueprint_def.visual_size_in_tiles),
+			"scale_multiplier": blueprint_def.visual_scale if blueprint_def.visual_scale > 0.0 else 1.0,
+			"y_offset_tiles": blueprint_def.visual_y_offset_tiles,
+		}
+
+	var processor_def: ProcessorDefinition = _get_visual_processor_def(grid_pos, state_name)
+	if processor_def != null:
+		return {
+			"size_in_tiles": _sanitize_visual_size(processor_def.visual_size_in_tiles),
+			"scale_multiplier": processor_def.visual_scale if processor_def.visual_scale > 0.0 else 1.0,
+			"y_offset_tiles": processor_def.visual_y_offset_tiles,
+		}
+
+	if "_house" in lower_texture_path or "warehouse" in lower_texture_path or "shop_building" in lower_texture_path:
+		return {
+			"size_in_tiles": Vector2(2.2, 2.2),
+			"scale_multiplier": 1.0,
+			"y_offset_tiles": 0.28,
+		}
+	if "bakery" in lower_texture_path or "mill" in lower_texture_path or "factory" in lower_texture_path:
+		return {
+			"size_in_tiles": Vector2(1.9, 1.9),
+			"scale_multiplier": 1.0,
+			"y_offset_tiles": 0.2,
+		}
+	if "coop" in lower_texture_path or "pen" in lower_texture_path or "cage" in lower_texture_path:
+		return {
+			"size_in_tiles": Vector2(1.7, 1.7),
+			"scale_multiplier": 1.0,
+			"y_offset_tiles": 0.1,
+		}
+	if lower_state_name in ["coop", "cow_pen", "bakery", "mill", "tomato_factory", "animal_feed_factory", "fish_cage", "storage", "farm_house", "gathering_house", "factory_house"]:
+		return {
+			"size_in_tiles": Vector2(1.9, 1.9),
+			"scale_multiplier": 1.0,
+			"y_offset_tiles": 0.2,
+		}
+	return default_config
+
+func _sanitize_visual_size(size_in_tiles: Vector2) -> Vector2:
+	var width: float = size_in_tiles.x if size_in_tiles.x > 0.0 else 1.0
+	var height: float = size_in_tiles.y if size_in_tiles.y > 0.0 else 1.0
+	return Vector2(width, height)
+
+func _get_visual_blueprint_def(grid_pos: Vector2i) -> BlueprintDefinition:
+	if _farm_manager == null:
+		return null
+	var blueprint_id: String = _farm_manager.get_blueprint_id(grid_pos)
+	if blueprint_id != "":
+		return GameData.get_blueprint_def(blueprint_id)
+	var tile_type: String = _farm_manager.get_tile_type(grid_pos)
+	if tile_type != "":
+		return GameData.get_blueprint_def(tile_type)
+	return null
+
+func _get_visual_processor_def(grid_pos: Vector2i, state_name: String) -> ProcessorDefinition:
+	if _farm_manager == null:
+		return null
+	var processor_type: String = _farm_manager.get_processor_type(grid_pos)
+	if processor_type != "":
+		return GameData.get_processor_def(processor_type)
+	if state_name != "":
+		return GameData.get_processor_def(state_name)
+	return null
 
 func _load_texture(texture_path: String) -> Texture2D:
 	if texture_path == "":
@@ -525,7 +596,6 @@ func _load_texture(texture_path: String) -> Texture2D:
 	return tex
 
 func _spawn_sprite(parent: Node2D, grid_pos: Vector2i, texture_path: String, fallback_color: Color) -> void:
-	var sprite = _create_sprite_node(texture_path, fallback_color)
-	sprite.position = _grid_to_world_center(grid_pos)
+	var sprite = _create_sprite_node(grid_pos, "", texture_path, fallback_color)
 	_apply_visual_sorting(sprite, grid_pos, "", texture_path)
 	parent.add_child(sprite)

@@ -26,4 +26,6 @@ placement_type = "BUILDING"
 shop_category = "SHOP"
 tile_type = "COW_PEN"
 texture_path = "res://assets/sprites/cow_pen.png"
+visual_size_in_tiles = Vector2(1.9, 1.9)
+visual_y_offset_tiles = 0.14
 resource_costs = [SubResource("1"), SubResource("2")]

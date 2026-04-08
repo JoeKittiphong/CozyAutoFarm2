@@ -27,4 +27,6 @@ placement_surface = "LAND"
 shop_category = "SHOP"
 tile_type = "STORAGE"
 texture_path = "res://assets/sprites/central_warehouse.png"
+visual_size_in_tiles = Vector2(2.35, 2.35)
+visual_y_offset_tiles = 0.30
 resource_costs = [SubResource("1"), SubResource("2")]

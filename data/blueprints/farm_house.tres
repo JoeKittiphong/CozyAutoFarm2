@@ -27,4 +27,6 @@ placement_surface = "LAND"
 shop_category = "SHOP"
 tile_type = "FARM_HOUSE"
 texture_path = "res://assets/sprites/worker_house.png"
+visual_size_in_tiles = Vector2(2.2, 2.2)
+visual_y_offset_tiles = 0.28
 resource_costs = [SubResource("1"), SubResource("2")]

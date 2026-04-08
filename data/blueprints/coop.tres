@@ -26,4 +26,6 @@ placement_type = "BUILDING"
 shop_category = "SHOP"
 tile_type = "COOP"
 texture_path = "res://assets/sprites/chicken_coop.png"
+visual_size_in_tiles = Vector2(1.7, 1.7)
+visual_y_offset_tiles = 0.12
 resource_costs = [SubResource("1"), SubResource("2")]

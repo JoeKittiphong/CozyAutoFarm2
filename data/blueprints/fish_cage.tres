@@ -27,4 +27,6 @@ placement_surface = "WATER"
 shop_category = "SHOP"
 processor_type = "FISH_CAGE"
 texture_path = "res://assets/sprites/fish_cage.png"
+visual_size_in_tiles = Vector2(1.45, 1.45)
+visual_y_offset_tiles = 0.04
 resource_costs = [SubResource("1"), SubResource("2")]

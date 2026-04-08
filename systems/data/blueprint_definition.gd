@@ -16,4 +16,7 @@ class_name BlueprintDefinition
 @export var level_textures: Array[String] = []
 @export var level_sprout_textures: Array[String] = []
 @export var level_ready_textures: Array[String] = []
+@export var visual_size_in_tiles: Vector2 = Vector2.ONE
+@export var visual_scale: float = 1.0
+@export var visual_y_offset_tiles: float = 0.0
 @export var resource_costs: Array[ResourceAmountDefinition] = []
