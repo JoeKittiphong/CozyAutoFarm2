@@ -4,6 +4,8 @@ class_name FarmWorker
 @export var move_speed: float = 300.0
 
 const MAX_CARRY := 3
+const MAX_JOB_RETRIES := 4
+const SORT_Z_BASE := 2000
 const DIRECTION_FRONT := "front"
 const DIRECTION_BACK := "back"
 const DIRECTION_LEFT := "left"
@@ -66,8 +68,10 @@ func _ready() -> void:
 	_apply_direction_texture(_current_direction)
 	sprite.position = Vector2(GameData.TILE_SIZE / 2.0, GameData.TILE_SIZE / 2.0)
 	add_child(sprite)
+	_update_sorting()
 
 func _process(delta: float) -> void:
+	_update_sorting()
 	if is_working:
 		return
 
@@ -306,6 +310,7 @@ func _handle_harvest() -> void:
 		_start_delivery()
 
 func _handle_feed_animal(item_type: String, amount: int, group_name: String) -> void:
+	var interaction_pos: Vector2i = _resolve_job_interaction_pos(Vector2i(current_job.get("interaction_pos", current_job.get("target_pos", Vector2i.ZERO))), current_job.target_pos, true)
 	if _get_carried_amount(item_type) < amount:
 		var grid_pos = _get_current_grid_pos()
 		var storage_pos = _get_storage_pos_for_item(item_type)
@@ -334,7 +339,18 @@ func _handle_feed_animal(item_type: String, amount: int, group_name: String) -> 
 				return
 
 		_add_carried_item(item_type, amount)
-		current_path = _grid_manager.get_path_cells(grid_pos, current_job.target_pos)
+		if grid_pos != interaction_pos:
+			current_path = _grid_manager.get_path_cells(grid_pos, interaction_pos)
+			if current_path.is_empty():
+				_remove_carried_item(item_type, amount)
+				if item_type == GameData.ITEM_ANIMAL_FEED:
+					_inventory_manager.add_animal_feed_points(int(current_job.get("feed_points", 1)))
+				else:
+					_inventory_manager.add_item(item_type, amount)
+				_retry_current_job({"interaction_pos": interaction_pos})
+				return
+		else:
+			current_path.clear()
 		is_working = false
 		return
 
@@ -366,13 +382,18 @@ func _requeue_feed_job(item_type: String, amount: int, group_name: String) -> vo
 		"group_name": group_name,
 		"fallback_item_type": String(current_job.get("fallback_item_type", "")),
 		"fallback_amount": int(current_job.get("fallback_amount", amount)),
+		"interaction_pos": Vector2i(current_job.get("interaction_pos", current_job.target_pos)),
 	})
 
 func _handle_collect_animal_product(item_type: String, group_name: String, collect_method: String) -> void:
+	var interaction_pos: Vector2i = _resolve_job_interaction_pos(Vector2i(current_job.get("interaction_pos", current_job.get("target_pos", Vector2i.ZERO))), current_job.target_pos, true)
 	if _get_carried_amount(item_type) < 1:
 		var grid_pos = _get_current_grid_pos()
-		if grid_pos != current_job.target_pos:
-			current_path = _grid_manager.get_path_cells(grid_pos, current_job.target_pos)
+		if grid_pos != interaction_pos:
+			current_path = _grid_manager.get_path_cells(grid_pos, interaction_pos)
+			if current_path.is_empty():
+				_retry_current_job({"interaction_pos": interaction_pos})
+				return
 			is_working = false
 			return
 
@@ -392,14 +413,13 @@ func _handle_collect_animal_product(item_type: String, group_name: String, colle
 	is_working = false
 
 func _handle_fetch_animal() -> void:
-	var pickup_pos: Vector2i = Vector2i(current_job.get("interaction_pos", current_job.get("target_pos", GameData.get_shop_pos())))
+	var pickup_pos: Vector2i = _resolve_job_interaction_pos(Vector2i(current_job.get("interaction_pos", current_job.get("target_pos", GameData.get_shop_pos()))), Vector2i(current_job.get("target_pos", GameData.get_shop_pos())), false)
 	if carried_animal == null:
 		var grid_pos = _get_current_grid_pos()
 		if grid_pos != pickup_pos:
 			current_path = _grid_manager.get_path_cells(grid_pos, pickup_pos)
 			if current_path.is_empty():
-				current_job.clear()
-				is_working = false
+				_retry_current_job({"interaction_pos": pickup_pos})
 				return
 			is_working = false
 			return
@@ -434,7 +454,15 @@ func _handle_fetch_animal() -> void:
 
 		if found:
 			current_job.target_pos = dest
-			current_path = _grid_manager.get_path_cells(grid_pos, dest)
+			var delivery_pos: Vector2i = _resolve_job_interaction_pos(dest, dest, true)
+			current_job["interaction_pos"] = delivery_pos
+			current_path = _grid_manager.get_path_cells(grid_pos, delivery_pos)
+			if current_path.is_empty() and grid_pos != delivery_pos:
+				carried_animal.visible = true
+				carried_animal = null
+				_update_carried_visual()
+				_retry_current_job({"interaction_pos": pickup_pos})
+				return
 		else:
 			carried_animal.visible = true
 			carried_animal = null
@@ -452,17 +480,14 @@ func _handle_fetch_animal() -> void:
 func _handle_processor_deliver() -> void:
 	var item_type: String = String(current_job.get("item_type", ""))
 	var amount: int = int(current_job.get("amount", 1))
-	var storage_pos: Vector2i = Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type)))
-	var interaction_pos: Vector2i = Vector2i(current_job.get("interaction_pos", current_job.target_pos))
+	var storage_pos: Vector2i = _resolve_job_interaction_pos(Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type))), _get_storage_pos_for_item(item_type), false)
+	var interaction_pos: Vector2i = _resolve_job_interaction_pos(Vector2i(current_job.get("interaction_pos", current_job.target_pos)), current_job.target_pos, true)
 	var grid_pos: Vector2i = _get_current_grid_pos()
 	if _get_carried_amount(item_type) < amount:
 		if grid_pos != storage_pos:
 			current_path = _grid_manager.get_path_cells(grid_pos, storage_pos)
 			if current_path.is_empty():
-				if _farm_manager.has_method("cancel_processor_delivery"):
-					_farm_manager.cancel_processor_delivery(current_job.target_pos, item_type)
-				current_job.clear()
-				is_working = false
+				_retry_current_job({"storage_pos": storage_pos, "interaction_pos": interaction_pos})
 				return
 			is_working = false
 			return
@@ -482,10 +507,7 @@ func _handle_processor_deliver() -> void:
 		if current_path.is_empty() and grid_pos != interaction_pos:
 			_remove_carried_item(item_type, amount)
 			_inventory_manager.add_item(item_type, amount)
-			if _farm_manager.has_method("cancel_processor_delivery"):
-				_farm_manager.cancel_processor_delivery(current_job.target_pos, item_type)
-			current_job.clear()
-			is_working = false
+			_retry_current_job({"storage_pos": storage_pos, "interaction_pos": interaction_pos})
 			return
 		is_working = false
 		return
@@ -495,10 +517,7 @@ func _handle_processor_deliver() -> void:
 		if current_path.is_empty():
 			_remove_carried_item(item_type, amount)
 			_inventory_manager.add_item(item_type, amount)
-			if _farm_manager.has_method("cancel_processor_delivery"):
-				_farm_manager.cancel_processor_delivery(current_job.target_pos, item_type)
-			current_job.clear()
-			is_working = false
+			_retry_current_job({"storage_pos": storage_pos, "interaction_pos": interaction_pos})
 			return
 		is_working = false
 		return
@@ -511,15 +530,14 @@ func _handle_processor_deliver() -> void:
 func _handle_processor_collect() -> void:
 	var item_type: String = String(current_job.get("item_type", ""))
 	var amount: int = int(current_job.get("amount", 1))
-	var storage_pos: Vector2i = Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type)))
-	var interaction_pos: Vector2i = Vector2i(current_job.get("interaction_pos", current_job.target_pos))
+	var storage_pos: Vector2i = _resolve_job_interaction_pos(Vector2i(current_job.get("storage_pos", _get_storage_pos_for_item(item_type))), _get_storage_pos_for_item(item_type), false)
+	var interaction_pos: Vector2i = _resolve_job_interaction_pos(Vector2i(current_job.get("interaction_pos", current_job.target_pos)), current_job.target_pos, true)
 	if _get_carried_amount(item_type) < amount:
 		var grid_pos: Vector2i = _get_current_grid_pos()
 		if grid_pos != interaction_pos:
 			current_path = _grid_manager.get_path_cells(grid_pos, interaction_pos)
 			if current_path.is_empty():
-				current_job.clear()
-				is_working = false
+				_retry_current_job({"storage_pos": storage_pos, "interaction_pos": interaction_pos})
 				return
 			is_working = false
 			return
@@ -536,8 +554,7 @@ func _handle_processor_collect() -> void:
 			if current_path.is_empty():
 				_inventory_manager.add_item(String(collected.get("item", item_type)), int(collected.get("amount", amount)))
 				_remove_carried_item(String(collected.get("item", item_type)), int(collected.get("amount", amount)))
-				current_job.clear()
-				is_working = false
+				_retry_current_job({"storage_pos": storage_pos, "interaction_pos": interaction_pos})
 				return
 		else:
 			current_path.clear()
@@ -550,18 +567,18 @@ func _handle_processor_collect() -> void:
 	is_working = false
 
 func _handle_gather_resource() -> void:
-	var interaction_pos := Vector2i(current_job.get("interaction_pos", current_job.get("target_pos", Vector2i.ZERO)))
+	var target_cell := Vector2i(current_job.get("target_pos", Vector2i.ZERO))
+	var interaction_pos := _resolve_resource_interaction_pos(target_cell)
 	var grid_pos = _get_current_grid_pos()
 	if grid_pos != interaction_pos:
 		current_path = _grid_manager.get_path_cells(grid_pos, interaction_pos)
 		if current_path.is_empty():
-			current_job.clear()
-			is_working = false
+			_retry_current_job({"interaction_pos": interaction_pos})
 			return
 		is_working = false
 		return
 
-	var gathered: Dictionary = _resource_manager.gather_resource(Vector2i(current_job.get("target_pos", Vector2i.ZERO)))
+	var gathered: Dictionary = _resource_manager.gather_resource(target_cell)
 	if gathered.is_empty():
 		current_job.clear()
 		is_working = false
@@ -575,6 +592,48 @@ func _handle_gather_resource() -> void:
 
 func _get_storage_pos_for_item(_item_type: String) -> Vector2i:
 	return GameData.get_storage_pos()
+
+func _resolve_resource_interaction_pos(target_cell: Vector2i) -> Vector2i:
+	if _resource_manager != null and _resource_manager.has_method("refresh_interaction_pos"):
+		var refreshed: Vector2i = _resource_manager.refresh_interaction_pos(target_cell, _get_current_grid_pos())
+		if refreshed != target_cell:
+			current_job["interaction_pos"] = refreshed
+			return refreshed
+	return _resolve_job_interaction_pos(Vector2i(current_job.get("interaction_pos", target_cell)), target_cell, true)
+
+func _resolve_job_interaction_pos(preferred_cell: Vector2i, focus_cell: Vector2i, cardinal_only: bool = false) -> Vector2i:
+	var grid_pos: Vector2i = _get_current_grid_pos()
+	if _grid_manager == null:
+		return preferred_cell
+
+	if _grid_manager.is_walkable_land_cell(preferred_cell):
+		var preferred_path: Array[Vector2i] = _grid_manager.get_path_cells(grid_pos, preferred_cell)
+		if not preferred_path.is_empty() or grid_pos == preferred_cell:
+			return preferred_cell
+
+	if _grid_manager.has_method("find_reachable_land_cell_near"):
+		var resolved: Vector2i = _grid_manager.find_reachable_land_cell_near(focus_cell, grid_pos, 8, cardinal_only)
+		if _grid_manager.is_walkable_land_cell(resolved):
+			var resolved_path: Array[Vector2i] = _grid_manager.get_path_cells(grid_pos, resolved)
+			if not resolved_path.is_empty() or grid_pos == resolved:
+				return resolved
+	return preferred_cell
+
+func _retry_current_job(updated_fields: Dictionary = {}, allow_retry: bool = true) -> void:
+	var retry_count: int = int(current_job.get("retry_count", 0))
+	if allow_retry and retry_count < MAX_JOB_RETRIES and _job_manager != null:
+		var next_job: Dictionary = current_job.duplicate(true)
+		next_job["retry_count"] = retry_count + 1
+		for key in updated_fields.keys():
+			next_job[key] = updated_fields[key]
+		var job_type: String = String(next_job.get("type", ""))
+		var target_pos: Vector2i = Vector2i(next_job.get("target_pos", Vector2i.ZERO))
+		next_job.erase("type")
+		next_job.erase("target_pos")
+		_job_manager.add_job(job_type, target_pos, next_job)
+	current_job.clear()
+	current_path.clear()
+	is_working = false
 
 func _add_carried_item(item_type: String, amount: int) -> void:
 	carried_items[item_type] = _get_carried_amount(item_type) + amount
@@ -632,6 +691,10 @@ func _update_carried_visual() -> void:
 	item_sprite.name = "CarriedItem"
 	add_child(item_sprite)
 	item_sprite.position = Vector2(GameData.TILE_SIZE / 2.0, -10.0 - (count * 8))
+
+func _update_sorting() -> void:
+	z_as_relative = true
+	z_index = SORT_Z_BASE + _get_current_grid_pos().y
 
 func _start_delivery() -> void:
 	current_job = {"type": GameData.JOB_DELIVER, "target_pos": GameData.get_storage_pos()}

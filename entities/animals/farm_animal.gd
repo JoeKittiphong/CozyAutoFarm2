@@ -1,6 +1,8 @@
 extends Node2D
 class_name FarmAnimal
 
+const SORT_Z_BASE := 2000
+
 
 
 @export var animal_type: String = ""
@@ -15,12 +17,15 @@ var has_requested_collect: bool = false
 @onready var sprite: Sprite2D = Sprite2D.new()
 @onready var _job_manager: Node = get_node("/root/JobManager")
 @onready var _inventory_manager: Node = get_node("/root/InventoryManager")
+@onready var _grid_manager: Node = get_node("/root/GridManager")
 
 func _ready() -> void:
 	add_child(sprite)
 	_apply_definition()
+	_update_sorting()
 
 func _process(delta: float) -> void:
+	_update_sorting()
 	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
 	if animal_def == null:
 		return
@@ -45,11 +50,15 @@ func _process(delta: float) -> void:
 
 	if state == animal_def.ready_state_name and not has_requested_collect:
 		if _job_manager:
+			var interaction_pos: Vector2i = home_pos
+			if _grid_manager != null and _grid_manager.has_method("find_reachable_land_cell_near"):
+				interaction_pos = _grid_manager.find_reachable_land_cell_near(home_pos, home_pos, 8, true)
 			_job_manager.add_job(GameData.JOB_COLLECT_ANIMAL_PRODUCT, home_pos, {
 				"item_type": animal_def.product_item_id,
 				"output_item_type": animal_def.product_item_id,
 				"group_name": animal_def.group_name,
 				"collect_method": "collect_product",
+				"interaction_pos": interaction_pos,
 			})
 		has_requested_collect = true
 
@@ -83,6 +92,9 @@ func _request_feed_job(animal_def: AnimalDefinition) -> void:
 	var use_premium_feed: bool = _inventory_manager != null and _inventory_manager.get_item_stock(GameData.ITEM_ANIMAL_FEED) > 0
 	var requested_item: String = GameData.ITEM_ANIMAL_FEED if use_premium_feed else animal_def.feed_item_id
 	var requested_amount: int = 1 if use_premium_feed else animal_def.feed_amount
+	var interaction_pos: Vector2i = home_pos
+	if _grid_manager != null and _grid_manager.has_method("find_reachable_land_cell_near"):
+		interaction_pos = _grid_manager.find_reachable_land_cell_near(home_pos, home_pos, 8, true)
 	_job_manager.add_job(GameData.JOB_FEED_ANIMAL, home_pos, {
 		"item_type": requested_item,
 		"amount": requested_amount,
@@ -91,6 +103,7 @@ func _request_feed_job(animal_def: AnimalDefinition) -> void:
 		"fallback_amount": animal_def.feed_amount,
 		"feed_points": animal_def.premium_feed_points,
 		"output_item_type": animal_def.product_item_id,
+		"interaction_pos": interaction_pos,
 	})
 
 func _wander(delta: float, animal_def: AnimalDefinition) -> void:
@@ -135,3 +148,7 @@ func update_visual(level: int) -> void:
 		var t_size = tex.get_size()
 		sprite.scale = Vector2(GameData.TILE_SIZE / t_size.x, GameData.TILE_SIZE / t_size.y) * animal_def.sprite_scale
 
+func _update_sorting() -> void:
+	z_as_relative = true
+	var current_row: int = int(round(position.y / GameData.TILE_SIZE))
+	z_index = SORT_Z_BASE + current_row

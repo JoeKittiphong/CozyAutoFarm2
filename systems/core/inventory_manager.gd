@@ -106,6 +106,12 @@ func consume_animal_feed_points(points: int) -> bool:
 func get_animal_feed_points() -> int:
 	return animal_feed_points
 
+func add_animal_feed_points(points: int) -> void:
+	if points <= 0:
+		return
+	animal_feed_points += points
+	resources_updated.emit()
+
 func get_blueprint_stock(blueprint_type: String) -> int:
 	return int(blueprint_stock.get(blueprint_type, 0))
 

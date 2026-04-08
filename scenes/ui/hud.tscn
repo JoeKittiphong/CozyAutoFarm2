@@ -86,19 +86,17 @@ size_flags_horizontal = 3
 [node name="WarehouseButton" type="Button" parent="TopBar/BarContent" unique_id=211653424]
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
-text = "Storage"
+text = "Farm"
 
 [node name="TargetsButton" type="Button" parent="TopBar/BarContent" unique_id=211653425]
-visible = false
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
-text = "Targets"
+text = "Factory"
 
 [node name="WorkersButton" type="Button" parent="TopBar/BarContent" unique_id=1104079984]
-visible = false
 custom_minimum_size = Vector2(120, 0)
 layout_mode = 2
-text = "Workers"
+text = "Gathering"
 
 [node name="MillButton" type="Button" parent="TopBar/BarContent" unique_id=1256858844]
 visible = false
@@ -192,6 +190,98 @@ theme_override_constants/separation = 10
 [node name="CloseButton" type="Button" parent="SidePanels/TargetsPanel/Content" unique_id=1062904548]
 layout_mode = 2
 text = "Close"
+
+[node name="BottomStorageBar" type="PanelContainer" parent="." unique_id=2085611399]
+visible = false
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -50.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
+
+[node name="Content" type="MarginContainer" parent="BottomStorageBar" unique_id=2085611400]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="StorageLayout" type="VBoxContainer" parent="BottomStorageBar/Content" unique_id=2085611409]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CategoryTabs" type="HBoxContainer" parent="BottomStorageBar/Content/StorageLayout" unique_id=2085611410]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="FarmTabButton" type="Button" parent="BottomStorageBar/Content/StorageLayout/CategoryTabs" unique_id=2085611411]
+layout_mode = 2
+text = "Farm"
+
+[node name="FactoryTabButton" type="Button" parent="BottomStorageBar/Content/StorageLayout/CategoryTabs" unique_id=2085611412]
+layout_mode = 2
+text = "Factory"
+
+[node name="GatheringTabButton" type="Button" parent="BottomStorageBar/Content/StorageLayout/CategoryTabs" unique_id=2085611413]
+layout_mode = 2
+text = "Gathering"
+
+[node name="StorageItems" type="HBoxContainer" parent="BottomStorageBar/Content/StorageLayout" unique_id=2085611401]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TargetPopup" type="PanelContainer" parent="." unique_id=2085611402]
+visible = false
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 1
+anchors_preset = 0
+offset_left = 12.0
+offset_top = 420.0
+offset_right = 172.0
+offset_bottom = 550.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
+
+[node name="Content" type="VBoxContainer" parent="TargetPopup" unique_id=2085611403]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="TargetPopup/Content" unique_id=2085611404]
+layout_mode = 2
+text = "--- TARGET ---"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 18
+
+[node name="ItemButton" type="Button" parent="TargetPopup/Content" unique_id=2085611405]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+icon_alignment = 0
+expand_icon = true
+text = "Item"
+
+[node name="StockLabel" type="Label" parent="TargetPopup/Content" unique_id=2085611406]
+layout_mode = 2
+text = "0 / 0"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+
+[node name="TargetSpinBox" type="SpinBox" parent="TargetPopup/Content" unique_id=2085611407]
+layout_mode = 2
+min_value = 0.0
+max_value = 999.0
+step = 1.0
+rounded = true
+custom_minimum_size = Vector2(0, 34)
+
+[node name="CloseButton" type="Button" parent="TargetPopup/Content" unique_id=2085611408]
+layout_mode = 2
+text = "Close"
+custom_minimum_size = Vector2(0, 32)
 
 [node name="WorkerManagePanel" type="PanelContainer" parent="SidePanels" unique_id=1634639479]
 visible = false
@@ -302,6 +392,30 @@ layout_mode = 2
 text = "--- SHOP ---"
 horizontal_alignment = 1
 
+[node name="CategoryTabs" type="HBoxContainer" parent="SidePanels/ShopPanel/Content" unique_id=1799381163]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ShopTabButton" type="Button" parent="SidePanels/ShopPanel/Content/CategoryTabs" unique_id=1799381164]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Shop"
+
+[node name="SeedTabButton" type="Button" parent="SidePanels/ShopPanel/Content/CategoryTabs" unique_id=1799381165]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Seeds"
+
+[node name="BuildingTabButton" type="Button" parent="SidePanels/ShopPanel/Content/CategoryTabs" unique_id=1799381166]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Buildings"
+
+[node name="AnimalTabButton" type="Button" parent="SidePanels/ShopPanel/Content/CategoryTabs" unique_id=1799381167]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Animals"
+
 [node name="ScrollContainer" type="ScrollContainer" parent="SidePanels/ShopPanel/Content" unique_id=1250104529]
 custom_minimum_size = Vector2(0, 280)
 layout_mode = 2
@@ -319,6 +433,7 @@ theme_override_constants/separation = 10
 script = ExtResource("2_list")
 
 [node name="SeedTitle" type="Label" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1109445008]
+visible = false
 layout_mode = 2
 text = "--- SEEDS & PLOTS ---"
 horizontal_alignment = 1
@@ -332,6 +447,7 @@ list_kind = "blueprints"
 blueprint_shop_category = "SHOP"
 
 [node name="BuildingTitle" type="Label" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1512756428]
+visible = false
 layout_mode = 2
 text = "--- BUILDINGS ---"
 horizontal_alignment = 1
@@ -345,6 +461,7 @@ list_kind = "blueprints"
 blueprint_shop_category = "SHOP"
 
 [node name="AnimalTitle" type="Label" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=2112756428]
+visible = false
 layout_mode = 2
 text = "--- ANIMALS ---"
 horizontal_alignment = 1

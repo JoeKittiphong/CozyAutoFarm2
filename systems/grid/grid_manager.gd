@@ -104,6 +104,38 @@ func find_nearest_cardinal_walkable_land_cell(origin: Vector2i, max_radius: int 
 
 	return origin
 
+func find_reachable_land_cell_near(origin: Vector2i, from_cell: Vector2i, max_radius: int = 8, cardinal_only: bool = false) -> Vector2i:
+	if is_walkable_land_cell(origin):
+		var direct_path: Array[Vector2i] = get_path_cells(from_cell, origin)
+		if not direct_path.is_empty() or from_cell == origin:
+			return origin
+
+	for radius in range(1, max_radius + 1):
+		var candidates: Array[Vector2i] = []
+		if cardinal_only:
+			candidates = [
+				Vector2i(origin.x, origin.y - radius),
+				Vector2i(origin.x + radius, origin.y),
+				Vector2i(origin.x, origin.y + radius),
+				Vector2i(origin.x - radius, origin.y),
+			]
+		else:
+			for x in range(origin.x - radius, origin.x + radius + 1):
+				for y in range(origin.y - radius, origin.y + radius + 1):
+					var candidate := Vector2i(x, y)
+					if abs(candidate.x - origin.x) != radius and abs(candidate.y - origin.y) != radius:
+						continue
+					candidates.append(candidate)
+
+		for candidate in candidates:
+			if not is_walkable_land_cell(candidate):
+				continue
+			var path: Array[Vector2i] = get_path_cells(from_cell, candidate)
+			if not path.is_empty() or from_cell == candidate:
+				return candidate
+
+	return origin
+
 func reset_map_cells(map_region: Rect2i, ground_walkable_cells: Array[Vector2i], water_surface_cells: Array[Vector2i] = [], obstacle_cells: Array[Vector2i] = [], resource_cells: Array[Vector2i] = []) -> void:
 	if grid == null:
 		return

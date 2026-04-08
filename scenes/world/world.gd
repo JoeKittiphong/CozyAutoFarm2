@@ -6,6 +6,7 @@ const DEFAULT_MAP_RECT := Rect2i(-15, -10, 30, 20)
 const GROUND_SOURCE_ID := 0
 const GROUND_ATLAS_COORDS := Vector2i.ZERO
 const START_CAMERA_LEFT_UI_WIDTH := 360.0
+const SORT_Z_BASE := 2000
 
 @onready var ground_layer: TileMapLayer = $GroundLayer
 @onready var water_layer: TileMapLayer = $WaterLayer
@@ -72,7 +73,7 @@ func _spawn_starting_structures() -> void:
 	var shop_pos: Vector2i = _marker_to_grid(shop_marker)
 	GameData.set_shop_pos(shop_pos)
 	_spawn_sprite(building_layer, shop_pos, "res://assets/sprites/shop_building.png", Color.BROWN)
-	GridManager.set_cell_solid(shop_pos, true)
+	_set_structure_solid(shop_pos, true)
 
 func _on_viewport_size_changed() -> void:
 	call_deferred("_frame_start_camera")
@@ -237,6 +238,11 @@ func _find_worker_house_cell_for_domain(domain_id: String, preferred_house_cell:
 func _is_large_building_hit(anchor_cell: Vector2i, grid_pos: Vector2i) -> bool:
 	return grid_pos.x >= anchor_cell.x and grid_pos.x <= anchor_cell.x + 1 and grid_pos.y >= anchor_cell.y and grid_pos.y <= anchor_cell.y + 1
 
+func _set_structure_solid(anchor_cell: Vector2i, solid: bool, footprint: Vector2i = Vector2i(2, 2)) -> void:
+	for x in range(anchor_cell.x, anchor_cell.x + footprint.x):
+		for y in range(anchor_cell.y, anchor_cell.y + footprint.y):
+			GridManager.set_cell_solid(Vector2i(x, y), solid)
+
 func _is_shop_interaction_cell(grid_pos: Vector2i) -> bool:
 	return grid_pos == GameData.get_shop_pos()
 
@@ -316,7 +322,7 @@ func _place_available_blueprint(grid_pos: Vector2i, inv: Node, f_manager: Node) 
 					var storage_pos: Vector2i = GridManager.find_nearest_walkable_land_cell(grid_pos, 8)
 					GameData.set_storage_pos(storage_pos)
 					GameData.set_processing_storage_pos(storage_pos)
-			GridManager.set_cell_solid(grid_pos, blueprint_def.placement_surface == "WATER")
+			_set_structure_solid(grid_pos, true)
 		return
 
 func has_empty_pen(pen_type: String) -> bool:
@@ -389,6 +395,8 @@ func update_tile_visual(grid_pos: Vector2i, state_name: String, tex_path: String
 			if "crop" in tex_path or "sprout" in tex_path or "ready" in tex_path:
 				tile.scale *= 0.6
 
+	_apply_visual_sorting(tile, grid_pos, state_name, tex_path)
+
 	if state_name == "BLUEPRINT":
 		tile.modulate = Color(1, 1, 1, 0.5)
 	else:
@@ -423,6 +431,49 @@ func _move_visual_to_layer(tile: Sprite2D, target_layer: Node2D) -> void:
 	target_layer.add_child(tile)
 	tile.global_position = old_position
 
+func _apply_visual_sorting(tile: Sprite2D, grid_pos: Vector2i, state_name: String, tex_path: String) -> void:
+	tile.z_as_relative = true
+	tile.z_index = _get_visual_sort_key(grid_pos, state_name, tex_path)
+
+func _get_visual_sort_key(grid_pos: Vector2i, state_name: String, tex_path: String) -> int:
+	var row: int = grid_pos.y
+	if _is_tall_visual(state_name, tex_path):
+		row += 2
+	elif _is_medium_visual(state_name, tex_path):
+		row += 1
+	return SORT_Z_BASE + row
+
+func _is_tall_visual(state_name: String, tex_path: String) -> bool:
+	var lower_tex_path: String = tex_path.to_lower()
+	var lower_state_name: String = state_name.to_lower()
+	if state_name == "BLUEPRINT":
+		return false
+	if "crop" in lower_tex_path or "sprout" in lower_tex_path or "ready" in lower_tex_path or "dirt" in lower_tex_path:
+		return false
+	if "blueprint_indicator" in lower_tex_path:
+		return false
+	return (
+		"_house" in lower_tex_path
+		or "warehouse" in lower_tex_path
+		or "shop_building" in lower_tex_path
+		or "bakery" in lower_tex_path
+		or "mill" in lower_tex_path
+		or "factory" in lower_tex_path
+		or "coop" in lower_tex_path
+		or "pen" in lower_tex_path
+		or "cage" in lower_tex_path
+		or lower_state_name in ["coop", "cow_pen", "bakery", "mill", "tomato_factory", "animal_feed_factory", "fish_cage", "storage", "farm_house", "gathering_house", "factory_house"]
+	)
+
+func _is_medium_visual(state_name: String, tex_path: String) -> bool:
+	var lower_tex_path: String = tex_path.to_lower()
+	var lower_state_name: String = state_name.to_lower()
+	return (
+		"tree" in lower_tex_path
+		or "rock" in lower_tex_path
+		or lower_state_name in ["tree", "rock"]
+	)
+
 func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2D:
 	var sprite = Sprite2D.new()
 	var tex = ResourceLoader.load(texture_path)
@@ -456,4 +507,5 @@ func _create_sprite_node(texture_path: String, fallback_color: Color) -> Sprite2
 func _spawn_sprite(parent: Node2D, grid_pos: Vector2i, texture_path: String, fallback_color: Color) -> void:
 	var sprite = _create_sprite_node(texture_path, fallback_color)
 	sprite.position = _grid_to_world_center(grid_pos)
+	_apply_visual_sorting(sprite, grid_pos, "", texture_path)
 	parent.add_child(sprite)

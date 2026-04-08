@@ -57,6 +57,21 @@ func get_resource_type(cell: Vector2i) -> String:
 func get_interaction_pos(cell: Vector2i) -> Vector2i:
 	return Vector2i(_resources.get(cell, {}).get("interaction_pos", cell))
 
+func refresh_interaction_pos(cell: Vector2i, from_cell: Vector2i = Vector2i(0, 0)) -> Vector2i:
+	if not _resources.has(cell):
+		return cell
+
+	var preferred_from: Vector2i = from_cell
+	if preferred_from == Vector2i.ZERO:
+		preferred_from = GridManager.find_nearest_walkable_land_cell(cell, 8)
+
+	var interaction_pos: Vector2i = GridManager.find_reachable_land_cell_near(cell, preferred_from, 8, true)
+	if not GridManager.is_walkable_land_cell(interaction_pos):
+		return cell
+
+	_resources[cell]["interaction_pos"] = interaction_pos
+	return interaction_pos
+
 func gather_resource(cell: Vector2i) -> Dictionary:
 	if not _resources.has(cell):
 		return {}
