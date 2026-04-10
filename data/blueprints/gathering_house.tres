@@ -14,3 +14,5 @@ placement_surface = "LAND"
 shop_category = "SHOP"
 tile_type = "GATHERING_HOUSE"
 texture_path = "res://assets/sprites/gathering_house.png"
+visual_size_in_tiles = Vector2(2.1, 2.1)
+visual_y_offset_tiles = 0.24

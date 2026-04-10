@@ -13,20 +13,24 @@ var _timer: float = 0.0
 var target_wander: Vector2
 var has_requested_feed: bool = false
 var has_requested_collect: bool = false
+var _last_sort_row: int = 0
+var _cached_animal_def: AnimalDefinition = null
 
 @onready var sprite: Sprite2D = Sprite2D.new()
 @onready var _job_manager: Node = get_node("/root/JobManager")
 @onready var _inventory_manager: Node = get_node("/root/InventoryManager")
 @onready var _grid_manager: Node = get_node("/root/GridManager")
+@onready var _farm_manager: Node = get_node("/root/FarmManager")
 
 func _ready() -> void:
 	add_child(sprite)
 	_apply_definition()
+	_last_sort_row = int(round(position.y / GameData.TILE_SIZE))
 	_update_sorting()
 
 func _process(delta: float) -> void:
-	_update_sorting()
-	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
+	_update_sorting_if_needed()
+	var animal_def: AnimalDefinition = _cached_animal_def
 	if animal_def == null:
 		return
 
@@ -51,7 +55,7 @@ func _process(delta: float) -> void:
 	if state == animal_def.ready_state_name and not has_requested_collect:
 		if _job_manager:
 			var interaction_pos: Vector2i = home_pos
-			if _grid_manager != null and _grid_manager.has_method("find_reachable_land_cell_near"):
+			if _grid_manager != null:
 				interaction_pos = _grid_manager.find_reachable_land_cell_near(home_pos, home_pos, 8, true)
 			_job_manager.add_job(GameData.JOB_COLLECT_ANIMAL_PRODUCT, home_pos, {
 				"item_type": animal_def.product_item_id,
@@ -63,13 +67,22 @@ func _process(delta: float) -> void:
 		has_requested_collect = true
 
 func setup(grid_pos: Vector2i) -> void:
+	if _farm_manager != null and home_pos != Vector2i.ZERO:
+		_farm_manager.unregister_animal(home_pos, self)
 	home_pos = grid_pos
 	position = Vector2(home_pos.x * GameData.TILE_SIZE, home_pos.y * GameData.TILE_SIZE)
 	state = GameData.STATE_HUNGRY
-	_pick_new_wander_target(GameData.get_animal_def(animal_type))
+	_last_sort_row = int(round(position.y / GameData.TILE_SIZE))
+	if _farm_manager != null:
+		_farm_manager.register_animal(home_pos, self)
+	_pick_new_wander_target(_cached_animal_def)
+
+func _exit_tree() -> void:
+	if _farm_manager != null:
+		_farm_manager.unregister_animal(home_pos, self)
 
 func feed() -> void:
-	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
+	var animal_def: AnimalDefinition = _cached_animal_def
 	if animal_def == null:
 		return
 	if state == GameData.STATE_HUNGRY:
@@ -78,7 +91,7 @@ func feed() -> void:
 		has_requested_feed = false
 
 func collect_product() -> void:
-	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
+	var animal_def: AnimalDefinition = _cached_animal_def
 	if animal_def == null:
 		return
 	if state == animal_def.ready_state_name:
@@ -93,7 +106,7 @@ func _request_feed_job(animal_def: AnimalDefinition) -> void:
 	var requested_item: String = GameData.ITEM_ANIMAL_FEED if use_premium_feed else animal_def.feed_item_id
 	var requested_amount: int = 1 if use_premium_feed else animal_def.feed_amount
 	var interaction_pos: Vector2i = home_pos
-	if _grid_manager != null and _grid_manager.has_method("find_reachable_land_cell_near"):
+	if _grid_manager != null:
 		interaction_pos = _grid_manager.find_reachable_land_cell_near(home_pos, home_pos, 8, true)
 	_job_manager.add_job(GameData.JOB_FEED_ANIMAL, home_pos, {
 		"item_type": requested_item,
@@ -123,6 +136,7 @@ func _pick_new_wander_target(animal_def: AnimalDefinition) -> void:
 
 func _apply_definition() -> void:
 	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
+	_cached_animal_def = animal_def
 	if animal_def == null:
 		return
 
@@ -137,7 +151,7 @@ func _apply_definition() -> void:
 	sprite.position = Vector2(GameData.TILE_SIZE / 2.0, GameData.TILE_SIZE / 2.0)
 
 func update_visual(level: int) -> void:
-	var animal_def: AnimalDefinition = GameData.get_animal_def(animal_type)
+	var animal_def: AnimalDefinition = _cached_animal_def
 	if animal_def == null:
 		return
 
@@ -152,3 +166,10 @@ func _update_sorting() -> void:
 	z_as_relative = true
 	var current_row: int = int(round(position.y / GameData.TILE_SIZE))
 	z_index = SORT_Z_BASE + current_row
+
+func _update_sorting_if_needed() -> void:
+	var current_row: int = int(round(position.y / GameData.TILE_SIZE))
+	if current_row == _last_sort_row:
+		return
+	_last_sort_row = current_row
+	_update_sorting()

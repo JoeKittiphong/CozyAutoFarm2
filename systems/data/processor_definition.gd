@@ -12,6 +12,9 @@ class_name ProcessorDefinition
 @export var ready_level_textures: Array[String] = []
 @export_file("*.png") var idle_texture_path: String = ""
 @export var level_textures: Array[String] = []
+@export var visual_size_in_tiles: Vector2 = Vector2.ONE
+@export var visual_scale: float = 1.0
+@export var visual_y_offset_tiles: float = 0.0
 @export var deliver_storage_pos: Vector2i = Vector2i.ZERO
 @export var collect_storage_pos: Vector2i = Vector2i.ZERO
 @export var inputs: Array = [] # Array[ResourceAmountDefinition]

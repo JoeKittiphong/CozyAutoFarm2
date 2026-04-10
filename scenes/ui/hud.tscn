@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://d38rgtfcw3vrd" path="res://scenes/ui/hud.gd" id="1_hud"]
 [ext_resource type="Script" uid="uid://cb00tu51fdouu" path="res://scenes/ui/components/game_action_list.gd" id="2_list"]
 [ext_resource type="Script" uid="uid://bsqqaqq4i3283" path="res://scenes/ui/components/game_resource_list.gd" id="3_reslist"]
+[ext_resource type="Script" path="res://scenes/ui/components/shop_panel_controller.gd" id="4_shop"]
+[ext_resource type="Script" path="res://scenes/ui/components/bottom_storage_bar_controller.gd" id="5_storage"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_top"]
 bg_color = Color(0.15, 0.1, 0.1, 0.9)
@@ -67,7 +69,8 @@ script = ExtResource("1_hud")
 [node name="TopBar" type="PanelContainer" parent="." unique_id=1328202237]
 anchors_preset = 10
 anchor_right = 1.0
-offset_bottom = 52.0
+offset_bottom = 31.0
+grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_top")
 
 [node name="BarContent" type="HBoxContainer" parent="TopBar" unique_id=1180908881]
@@ -109,7 +112,10 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_top = 52.0
+offset_left = 16.0
+offset_top = 45.0
+offset_right = -837.0
+offset_bottom = -44.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -121,10 +127,10 @@ anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -360.0
-offset_top = 10.0
-offset_right = -10.0
-offset_bottom = -10.0
+offset_left = -299.0
+offset_top = 5.0
+offset_right = 51.0
+offset_bottom = -15.0
 grow_horizontal = 0
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
@@ -160,10 +166,10 @@ anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -360.0
-offset_top = 10.0
-offset_right = -10.0
-offset_bottom = -10.0
+offset_left = -303.0
+offset_top = -13.0
+offset_right = 47.0
+offset_bottom = -33.0
 grow_horizontal = 0
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
@@ -190,98 +196,6 @@ theme_override_constants/separation = 10
 [node name="CloseButton" type="Button" parent="SidePanels/TargetsPanel/Content" unique_id=1062904548]
 layout_mode = 2
 text = "Close"
-
-[node name="BottomStorageBar" type="PanelContainer" parent="." unique_id=2085611399]
-visible = false
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_top = -50.0
-offset_bottom = -8.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
-
-[node name="Content" type="MarginContainer" parent="BottomStorageBar" unique_id=2085611400]
-layout_mode = 2
-theme_override_constants/margin_left = 10
-theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 10
-theme_override_constants/margin_bottom = 8
-
-[node name="StorageLayout" type="VBoxContainer" parent="BottomStorageBar/Content" unique_id=2085611409]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="CategoryTabs" type="HBoxContainer" parent="BottomStorageBar/Content/StorageLayout" unique_id=2085611410]
-visible = false
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="FarmTabButton" type="Button" parent="BottomStorageBar/Content/StorageLayout/CategoryTabs" unique_id=2085611411]
-layout_mode = 2
-text = "Farm"
-
-[node name="FactoryTabButton" type="Button" parent="BottomStorageBar/Content/StorageLayout/CategoryTabs" unique_id=2085611412]
-layout_mode = 2
-text = "Factory"
-
-[node name="GatheringTabButton" type="Button" parent="BottomStorageBar/Content/StorageLayout/CategoryTabs" unique_id=2085611413]
-layout_mode = 2
-text = "Gathering"
-
-[node name="StorageItems" type="HBoxContainer" parent="BottomStorageBar/Content/StorageLayout" unique_id=2085611401]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="TargetPopup" type="PanelContainer" parent="." unique_id=2085611402]
-visible = false
-custom_minimum_size = Vector2(160, 0)
-layout_mode = 1
-anchors_preset = 0
-offset_left = 12.0
-offset_top = 420.0
-offset_right = 172.0
-offset_bottom = 550.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
-
-[node name="Content" type="VBoxContainer" parent="TargetPopup" unique_id=2085611403]
-layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="Title" type="Label" parent="TargetPopup/Content" unique_id=2085611404]
-layout_mode = 2
-text = "--- TARGET ---"
-horizontal_alignment = 1
-theme_override_font_sizes/font_size = 18
-
-[node name="ItemButton" type="Button" parent="TargetPopup/Content" unique_id=2085611405]
-custom_minimum_size = Vector2(0, 40)
-layout_mode = 2
-icon_alignment = 0
-expand_icon = true
-text = "Item"
-
-[node name="StockLabel" type="Label" parent="TargetPopup/Content" unique_id=2085611406]
-layout_mode = 2
-text = "0 / 0"
-horizontal_alignment = 1
-theme_override_font_sizes/font_size = 16
-
-[node name="TargetSpinBox" type="SpinBox" parent="TargetPopup/Content" unique_id=2085611407]
-layout_mode = 2
-min_value = 0.0
-max_value = 999.0
-step = 1.0
-rounded = true
-custom_minimum_size = Vector2(0, 34)
-
-[node name="CloseButton" type="Button" parent="TargetPopup/Content" unique_id=2085611408]
-layout_mode = 2
-text = "Close"
-custom_minimum_size = Vector2(0, 32)
 
 [node name="WorkerManagePanel" type="PanelContainer" parent="SidePanels" unique_id=1634639479]
 visible = false
@@ -373,24 +287,21 @@ visible = false
 custom_minimum_size = Vector2(350, 0)
 layout_mode = 1
 anchors_preset = -1
-anchor_top = 0.042000003
-anchor_right = 0.30600002
-anchor_bottom = 0.87600005
-offset_left = 3.0
-offset_top = -0.032001495
-offset_right = 0.48797607
-offset_bottom = -0.0960083
+anchor_left = -0.047000002
+anchor_top = -0.023000002
+anchor_right = 1.251
+anchor_bottom = 0.984
+offset_left = 0.05300045
+offset_top = -0.14299679
+offset_right = -0.04901123
+offset_bottom = -0.056030273
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_shop")
+script = ExtResource("4_shop")
 
 [node name="Content" type="VBoxContainer" parent="SidePanels/ShopPanel" unique_id=989466707]
 layout_mode = 2
 theme_override_constants/separation = 15
-
-[node name="Title" type="Label" parent="SidePanels/ShopPanel/Content" unique_id=1649381163]
-layout_mode = 2
-text = "--- SHOP ---"
-horizontal_alignment = 1
 
 [node name="CategoryTabs" type="HBoxContainer" parent="SidePanels/ShopPanel/Content" unique_id=1799381163]
 layout_mode = 2
@@ -402,6 +313,7 @@ size_flags_horizontal = 3
 text = "Shop"
 
 [node name="SeedTabButton" type="Button" parent="SidePanels/ShopPanel/Content/CategoryTabs" unique_id=1799381165]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Seeds"
@@ -426,11 +338,13 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
-[node name="SellList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1053949515]
+[node name="SellList" type="GridContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1053949515]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
 script = ExtResource("2_list")
+display_mode = "compact_cards"
+columns = 4
+grid_columns = 4
 
 [node name="SeedTitle" type="Label" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1109445008]
 visible = false
@@ -438,13 +352,16 @@ layout_mode = 2
 text = "--- SEEDS & PLOTS ---"
 horizontal_alignment = 1
 
-[node name="SeedBlueprintList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1290336993]
+[node name="SeedBlueprintList" type="GridContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1290336993]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
 script = ExtResource("2_list")
 list_kind = "blueprints"
 blueprint_shop_category = "SHOP"
+display_mode = "compact_cards"
+columns = 4
+grid_columns = 4
 
 [node name="BuildingTitle" type="Label" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1512756428]
 visible = false
@@ -452,13 +369,15 @@ layout_mode = 2
 text = "--- BUILDINGS ---"
 horizontal_alignment = 1
 
-[node name="BuildingBlueprintList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1540336993]
+[node name="BuildingBlueprintList" type="GridContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1540336993]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
 script = ExtResource("2_list")
 list_kind = "blueprints"
 blueprint_shop_category = "SHOP"
+display_mode = "compact_cards"
+columns = 4
+grid_columns = 4
 
 [node name="AnimalTitle" type="Label" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=2112756428]
 visible = false
@@ -466,12 +385,14 @@ layout_mode = 2
 text = "--- ANIMALS ---"
 horizontal_alignment = 1
 
-[node name="AnimalList" type="VBoxContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1548645490]
+[node name="AnimalList" type="GridContainer" parent="SidePanels/ShopPanel/Content/ScrollContainer/ScrollContent" unique_id=1548645490]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
 script = ExtResource("2_list")
 list_kind = "shop_animals"
+display_mode = "compact_cards"
+columns = 4
+grid_columns = 4
 
 [node name="CloseButton" type="Button" parent="SidePanels/ShopPanel/Content" unique_id=1009277480]
 layout_mode = 2
@@ -484,19 +405,16 @@ layout_mode = 1
 anchors_preset = 4
 anchor_top = 0.5
 anchor_bottom = 0.5
-offset_right = 350.0
-offset_bottom = 280.0
+offset_left = -9.0
+offset_top = -63.5
+offset_right = 341.0
+offset_bottom = 67.5
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_worker")
 
 [node name="Content" type="VBoxContainer" parent="SidePanels/WorkerPanel" unique_id=739012301]
 layout_mode = 2
 theme_override_constants/separation = 15
-
-[node name="Title" type="Label" parent="SidePanels/WorkerPanel/Content" unique_id=1945723554]
-layout_mode = 2
-text = "--- WORKER HOUSE ---"
-horizontal_alignment = 1
 
 [node name="HireButton" type="Button" parent="SidePanels/WorkerPanel/Content" unique_id=986354705]
 layout_mode = 2
@@ -518,23 +436,13 @@ anchors_preset = 4
 anchor_top = 0.5
 anchor_bottom = 0.5
 offset_right = 350.0
-offset_bottom = 257.0
+offset_bottom = 123.0
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_upgrade")
 
 [node name="Content" type="VBoxContainer" parent="SidePanels/UpgradePanel" unique_id=896384049]
 layout_mode = 2
 theme_override_constants/separation = 15
-
-[node name="Title" type="Label" parent="SidePanels/UpgradePanel/Content" unique_id=2083948146]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.4, 1, 0.6, 1)
-text = "--- UPGRADE ---"
-horizontal_alignment = 1
-
-[node name="InfoLabel" type="Label" parent="SidePanels/UpgradePanel/Content" unique_id=1109965525]
-layout_mode = 2
-horizontal_alignment = 1
 
 [node name="ActionUpgradeButton" type="Button" parent="SidePanels/UpgradePanel/Content" unique_id=39943061]
 custom_minimum_size = Vector2(0, 50)
@@ -543,5 +451,61 @@ text = "Upgrade"
 
 [node name="CloseButton" type="Button" parent="SidePanels/UpgradePanel/Content" unique_id=955678531]
 custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+text = "Close"
+
+[node name="BottomStorageBar" type="PanelContainer" parent="." unique_id=2085611399]
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -42.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
+script = ExtResource("5_storage")
+
+[node name="Content" type="MarginContainer" parent="BottomStorageBar" unique_id=2085611400]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="StorageLayout" type="VBoxContainer" parent="BottomStorageBar/Content" unique_id=2085611409]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="StorageItems" type="HBoxContainer" parent="BottomStorageBar/Content/StorageLayout" unique_id=2085611401]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TargetPopup" type="PanelContainer" parent="." unique_id=2085611402]
+visible = false
+custom_minimum_size = Vector2(160, 0)
+offset_left = 2.0
+offset_top = 497.0
+offset_right = 162.0
+offset_bottom = 610.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_warehouse")
+
+[node name="Content" type="VBoxContainer" parent="TargetPopup" unique_id=2085611403]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="StockLabel" type="Label" parent="TargetPopup/Content" unique_id=2085611406]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "0 / 0"
+horizontal_alignment = 1
+
+[node name="TargetSpinBox" type="SpinBox" parent="TargetPopup/Content" unique_id=2085611407]
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+max_value = 999.0
+rounded = true
+
+[node name="CloseButton" type="Button" parent="TargetPopup/Content" unique_id=2085611408]
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 text = "Close"

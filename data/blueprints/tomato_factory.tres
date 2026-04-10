@@ -25,4 +25,6 @@ growth = 1.25
 placement_type = "PROCESSOR"
 processor_type = "TOMATO_FACTORY"
 texture_path = "res://assets/sprites/shop_building.png"
+visual_size_in_tiles = Vector2(2.0, 2.0)
+visual_y_offset_tiles = 0.20
 resource_costs = [SubResource("1"), SubResource("2")]

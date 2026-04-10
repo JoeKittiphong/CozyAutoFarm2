@@ -26,4 +26,6 @@ placement_type = "PROCESSOR"
 shop_category = "SHOP"
 processor_type = "ANIMAL_FEED_FACTORY"
 texture_path = "res://assets/sprites/feed_factory.png"
+visual_size_in_tiles = Vector2(2.0, 2.0)
+visual_y_offset_tiles = 0.20
 resource_costs = [SubResource("1"), SubResource("2")]
